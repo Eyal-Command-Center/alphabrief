@@ -43,66 +43,125 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white px-6 py-12 max-w-3xl mx-auto">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+
+      {/* Nav */}
+      <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center gap-2">
+        <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
+        <span className="text-white font-semibold text-lg tracking-tight">
           Alpha<span className="text-emerald-400">Brief</span>
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm">
-          Your daily market edge, in minutes.
-        </p>
-      </div>
+        </span>
+        <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
+      </nav>
 
-      <div className="mb-6">
-        <label className="block text-sm text-slate-400 mb-2">
-          Enter your tickers (comma separated)
-        </label>
-        <input
-          type="text"
-          value={tickers}
-          onChange={(e) => setTickers(e.target.value)}
-          placeholder="AAPL, NVDA, MSFT"
-          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm"
-          onKeyDown={(e) => e.key === 'Enter' && generateBrief()}
-        />
-      </div>
+      {/* Main */}
+      <main className="flex-1 flex flex-col items-center justify-start px-6 pt-20 pb-16">
 
-      <button
-        onClick={generateBrief}
-        disabled={loading || !tickers.trim()}
-        className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 text-black font-semibold py-3 rounded-lg transition-colors text-sm"
-      >
-        {loading ? 'Generating brief...' : 'Generate Morning Brief'}
-      </button>
-
-      {error && (
-        <p className="mt-4 text-red-400 text-sm">{error}</p>
-      )}
-
-      {brief && (
-        <div className="mt-8 bg-slate-900 border border-slate-800 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-emerald-400 font-semibold text-sm uppercase tracking-wider">
-              Morning Brief
+        {/* Hero */}
+        {!brief && !loading && (
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-semibold tracking-tight text-white mb-3">
+              Your morning brief,<br />
+              <span className="text-emerald-400">powered by AI.</span>
             </h2>
-            <span className="text-slate-600 text-xs">
-              {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </span>
+            <p className="text-slate-400 text-lg">
+              Add your tickers and get a sharp, human-readable summary of what matters today.
+            </p>
           </div>
-          <div className="prose prose-invert prose-sm max-w-none text-slate-200 leading-relaxed
-            prose-headings:text-emerald-400 prose-headings:font-semibold
-            prose-strong:text-white prose-strong:font-semibold
-            prose-p:text-slate-200 prose-p:my-2
-            prose-li:text-slate-200 prose-ul:my-2 prose-ol:my-2
-            prose-hr:border-slate-700">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{brief}</ReactMarkdown>
+        )}
+
+        {/* Input card */}
+        <div className="w-full max-w-xl">
+          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-widest mb-3">
+            Your tickers
+          </label>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={tickers}
+              onChange={(e) => setTickers(e.target.value)}
+              placeholder="AAPL, NVDA, MSFT, TSLA"
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+              onKeyDown={(e) => e.key === 'Enter' && generateBrief()}
+            />
+            <button
+              onClick={generateBrief}
+              disabled={loading || !tickers.trim()}
+              className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-semibold px-6 py-4 rounded-xl transition-all text-sm whitespace-nowrap"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
+                  Working...
+                </span>
+              ) : (
+                'Generate →'
+              )}
+            </button>
           </div>
+
+          {error && (
+            <p className="mt-3 text-red-400 text-sm">{error}</p>
+          )}
         </div>
-      )}
-    </main>
+
+        {/* Brief */}
+        {brief && (
+          <div className="w-full max-w-2xl mt-12">
+            <div className="flex items-center justify-between mb-8">
+              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">
+                Morning Brief
+              </span>
+              <span className="text-slate-400 text-xs">
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </span>
+            </div>
+
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h2: ({ children }) => (
+                  <h2 className="text-xl font-semibold text-white mt-12 mb-5 pb-4 border-b border-slate-800 first:mt-0 tracking-tight flex items-center gap-2">
+                    <span className="w-1.5 h-5 bg-emerald-500 rounded-full inline-block shrink-0" />
+                    {children}
+                  </h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-widest mt-6 mb-2">
+                    {children}
+                  </h3>
+                ),
+                p: ({ children }) => (
+                  <p className="text-slate-300 text-sm leading-7 mb-3">
+                    {children}
+                  </p>
+                ),
+                strong: ({ children }) => (
+                  <strong className="text-white font-semibold">{children}</strong>
+                ),
+                ul: ({ children }) => (
+                  <ul className="mb-4 space-y-2.5">{children}</ul>
+                ),
+                li: ({ children }) => (
+                  <li className="text-slate-300 text-sm leading-relaxed flex gap-3">
+                    <span className="text-emerald-500 mt-1.5 shrink-0 text-xs">▸</span>
+                    <span>{children}</span>
+                  </li>
+                ),
+                hr: () => (
+                  <div className="my-10 border-t border-slate-800/60" />
+                ),
+              }}
+            >
+              {brief}
+            </ReactMarkdown>
+          </div>
+        )}
+      </main>
+    </div>
   )
 }

@@ -49,17 +49,31 @@ export async function POST(req: Request) {
 
   const prompt = `You are a sharp, concise financial analyst generating a morning brief for a retail investor's portfolio.
 
-For each stock below, provide:
-1. **Price snapshot** — current price, % change today, and whether it's notable
-2. **Top news** — 2-3 most important items from the last 7 days, explained in plain English (no jargon)
-3. **Upcoming catalyst** — any earnings or key events in the next 30 days
-4. **Thesis check** — one line: is anything changing the fundamental story?
+For each stock, use this exact markdown structure:
+
+## TICKER — Company Name
+
+### Price Snapshot
+One sentence: current price, % change today, notable or not.
+
+### Top News
+- News item 1 in plain English
+- News item 2 in plain English
+- News item 3 if relevant
+
+### Upcoming Catalyst
+One sentence on earnings date or key event in the next 30 days. If none: "quiet"
+
+### Thesis Check
+One sentence: is anything changing the fundamental story?
+
+---
 
 Rules:
 - Tone: smart but human, like a knowledgeable friend — not a Bloomberg terminal
-- Be direct and brief. No filler sentences.
-- If there's nothing notable for a section, say so in one word: "quiet"
-- Flag anything that needs attention with ⚠️
+- Be direct. No filler. No "it's worth noting that".
+- Flag anything urgent with ⚠️
+- Separate each stock with ---
 
 Portfolio data:
 ${JSON.stringify(data, null, 2)}`
