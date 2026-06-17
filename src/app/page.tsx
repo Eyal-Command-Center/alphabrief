@@ -87,41 +87,15 @@ export default function LandingPage() {
           what moved, what's in the news, and what's coming next. In minutes, not hours.
         </p>
 
-        {status === 'success' ? (
-          <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-6 py-4">
-            <span className="text-emerald-400 text-xl">✓</span>
-            <div className="text-left">
-              <p className="text-white font-medium text-sm">You're on the list.</p>
-              <p className="text-slate-400 text-xs mt-0.5">We'll reach out when early access opens.</p>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={joinWaitlist} className="flex gap-3 w-full max-w-md">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
-            />
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-700 text-slate-950 font-semibold px-6 py-3.5 rounded-xl transition-all text-sm whitespace-nowrap"
-            >
-              {status === 'loading' ? 'Joining...' : 'Get early access'}
-            </button>
-          </form>
-        )}
-
-        {status === 'error' && (
-          <p className="mt-3 text-red-400 text-xs">Something went wrong. Try again.</p>
-        )}
-
-        <p className="mt-4 text-slate-600 text-xs">
-          No spam. No credit card. Just early access.
-        </p>
+        <div className="flex flex-col items-center gap-4">
+          <Link
+            href="/app"
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-8 py-4 rounded-xl transition-all text-sm"
+          >
+            Try it free →
+          </Link>
+          <p className="text-slate-500 text-xs">No credit card. No setup. Just sign up and go.</p>
+        </div>
       </section>
 
       {/* Features */}
