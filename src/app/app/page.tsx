@@ -1,14 +1,66 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { createClient } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 export default function Home() {
   const [tickers, setTickers] = useState('')
   const [brief, setBrief] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Auth state
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authSuccess, setAuthSuccess] = useState('')
+
+  const supabase = createClient()
+
+  // Check session on load + listen for changes
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user)
+      setAuthLoading(false)
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  // Load saved tickers when user logs in
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('portfolios')
+      .select('tickers')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.tickers?.length) {
+          setTickers(data.tickers.join(', '))
+        }
+      })
+  }, [user])
+
+  // Save tickers to Supabase
+  async function saveTickers(tickerList: string[]) {
+    if (!user) return
+    await supabase.from('portfolios').upsert(
+      { user_id: user.id, tickers: tickerList, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    )
+  }
 
   async function generateBrief() {
     const tickerList = tickers
@@ -22,6 +74,8 @@ export default function Home() {
     setLoading(true)
     setBrief('')
     setError('')
+
+    await saveTickers(tickerList)
 
     try {
       const res = await fetch('/api/brief', {
@@ -42,16 +96,122 @@ export default function Home() {
     }
   }
 
+  async function handleAuth(e: React.FormEvent) {
+    e.preventDefault()
+    setAuthSubmitting(true)
+    setAuthError('')
+    setAuthSuccess('')
+
+    if (authMode === 'signup') {
+      const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword })
+      if (error) setAuthError(error.message)
+      else setAuthSuccess('Check your email to confirm your account.')
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword })
+      if (error) setAuthError(error.message)
+    }
+
+    setAuthSubmitting(false)
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    setBrief('')
+    setTickers('')
+  }
+
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // Auth wall
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+        <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center gap-2">
+          <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
+          <span className="text-white font-semibold text-lg tracking-tight">
+            Alpha<span className="text-emerald-400">Brief</span>
+          </span>
+          <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
+        </nav>
+
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="w-full max-w-sm">
+            <h2 className="text-2xl font-semibold text-white mb-2 text-center">
+              {authMode === 'login' ? 'Welcome back' : 'Create your account'}
+            </h2>
+            <p className="text-slate-400 text-sm text-center mb-8">
+              {authMode === 'login' ? 'Sign in to access your brief.' : 'Free during beta.'}
+            </p>
+
+            <form onSubmit={handleAuth} className="space-y-3">
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+              />
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Password"
+                required
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+              />
+              {authError && <p className="text-red-400 text-xs">{authError}</p>}
+              {authSuccess && <p className="text-emerald-400 text-xs">{authSuccess}</p>}
+              <button
+                type="submit"
+                disabled={authSubmitting}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-700 text-slate-950 font-semibold py-3.5 rounded-xl transition-all text-sm"
+              >
+                {authSubmitting ? 'Please wait...' : authMode === 'login' ? 'Sign in' : 'Create account'}
+              </button>
+            </form>
+
+            <p className="text-center text-slate-500 text-xs mt-6">
+              {authMode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              <button
+                onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthSuccess('') }}
+                className="text-emerald-400 hover:text-emerald-300"
+              >
+                {authMode === 'login' ? 'Sign up' : 'Sign in'}
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Main app (authenticated)
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
 
       {/* Nav */}
-      <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center gap-2">
-        <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
-        <span className="text-white font-semibold text-lg tracking-tight">
-          Alpha<span className="text-emerald-400">Brief</span>
-        </span>
-        <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
+      <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
+          <span className="text-white font-semibold text-lg tracking-tight">
+            Alpha<span className="text-emerald-400">Brief</span>
+          </span>
+          <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-slate-500 text-xs">{user.email}</span>
+          <button onClick={signOut} className="text-xs text-slate-400 hover:text-white transition-colors">
+            Sign out
+          </button>
+        </div>
       </nav>
 
       {/* Main */}
