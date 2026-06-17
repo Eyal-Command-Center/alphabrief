@@ -206,7 +206,7 @@ export default function Home() {
             <button
               onClick={() => supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: `${window.location.origin}/app` }
+                options: { redirectTo: `${window.location.origin}/auth/callback?next=/app` }
               })}
               className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3.5 rounded-xl transition-all text-sm mb-4"
             >
