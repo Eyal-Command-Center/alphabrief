@@ -2,6 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  const { pathname, searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+
+  // Forward OAuth code from root to auth callback route
+  if (code && pathname === '/') {
+    return NextResponse.redirect(`${origin}/auth/callback?code=${code}&next=/app`)
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
