@@ -59,6 +59,8 @@ export default function ScreenerPage() {
 
   async function selectSector(sector: string) {
     setActiveSector(sector)
+    setSelected(null)
+    setDetail(null)
     setSuggestions([])
     setQuery('')
     const tickers = SECTORS[sector]
@@ -133,64 +135,66 @@ export default function ScreenerPage() {
           <p className="text-slate-400 text-sm">Search any stock or browse by sector for an AI-powered snapshot.</p>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search ticker or company name..."
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
-          />
-          {suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden z-10 shadow-xl">
-              {suggestions.map((s) => (
+        {/* When no detail is open: show search + sector filters */}
+        {!selected && !detailLoading && (
+          <>
+            <div className="relative mb-6">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search ticker or company name..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+              />
+              {suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden z-10 shadow-xl">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.symbol}
+                      onClick={() => loadDetail(s.symbol)}
+                      className="w-full px-5 py-3 flex items-center gap-4 hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <span className="text-white font-semibold text-sm w-16 shrink-0">{s.symbol}</span>
+                      <span className="text-slate-400 text-sm truncate">{s.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-8">
+              {Object.keys(SECTORS).map((sector) => (
                 <button
-                  key={s.symbol}
-                  onClick={() => loadDetail(s.symbol)}
-                  className="w-full px-5 py-3 flex items-center gap-4 hover:bg-slate-800 transition-colors text-left"
+                  key={sector}
+                  onClick={() => selectSector(sector)}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                    activeSector === sector
+                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                  }`}
                 >
-                  <span className="text-white font-semibold text-sm w-16 shrink-0">{s.symbol}</span>
-                  <span className="text-slate-400 text-sm truncate">{s.name}</span>
+                  {sector}
                 </button>
               ))}
             </div>
-          )}
-        </div>
 
-        {/* Sector filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {Object.keys(SECTORS).map((sector) => (
-            <button
-              key={sector}
-              onClick={() => selectSector(sector)}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all border ${
-                activeSector === sector
-                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                  : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
-              }`}
-            >
-              {sector}
-            </button>
-          ))}
-        </div>
-
-        {/* Sector ticker list */}
-        {activeSector && !selected && (
-          <div className="mb-8">
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-3">{activeSector}</p>
-            <div className="flex flex-wrap gap-2">
-              {sectorTickers.map((t) => (
-                <button
-                  key={t.symbol}
-                  onClick={() => loadDetail(t.symbol)}
-                  className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm font-semibold text-white hover:border-emerald-500 hover:text-emerald-400 transition-all"
-                >
-                  {t.symbol}
-                </button>
-              ))}
-            </div>
-          </div>
+            {activeSector && (
+              <div className="mb-8">
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-3">{activeSector}</p>
+                <div className="flex flex-wrap gap-2">
+                  {sectorTickers.map((t) => (
+                    <button
+                      key={t.symbol}
+                      onClick={() => loadDetail(t.symbol)}
+                      className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm font-semibold text-white hover:border-emerald-500 hover:text-emerald-400 transition-all"
+                    >
+                      {t.symbol}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Detail panel */}
@@ -203,6 +207,15 @@ export default function ScreenerPage() {
 
         {detail && !detailLoading && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mt-2">
+
+            {/* Back button */}
+            <button
+              onClick={() => { setSelected(null); setDetail(null) }}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6 group"
+            >
+              <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
+              Back to screener
+            </button>
 
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
@@ -270,12 +283,6 @@ export default function ScreenerPage() {
               </div>
             )}
 
-            <button
-              onClick={() => { setSelected(null); setDetail(null) }}
-              className="mt-6 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-            >
-              ← Back
-            </button>
           </div>
         )}
       </main>
