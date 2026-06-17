@@ -1,44 +1,52 @@
 'use client'
 
 import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import Link from 'next/link'
 
-export default function Home() {
-  const [tickers, setTickers] = useState('')
-  const [brief, setBrief] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+const features = [
+  {
+    icon: '◎',
+    title: 'Morning Brief',
+    description:
+      'Every morning, a sharp summary of your portfolio — what moved, why it moved, and whether it matters.',
+  },
+  {
+    icon: '◷',
+    title: 'Earnings Calendar',
+    description:
+      'Never miss an earnings date for a stock you own. Dates, expected moves, and analyst consensus — all in one place.',
+  },
+  {
+    icon: '◈',
+    title: 'AI News Digest',
+    description:
+      'Top news per ticker, filtered and explained in plain English. No noise, no jargon — just what you need to know.',
+  },
+]
 
-  async function generateBrief() {
-    const tickerList = tickers
-      .toUpperCase()
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
+export default function LandingPage() {
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
 
-    if (tickerList.length === 0) return
+  async function joinWaitlist(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim()) return
 
-    setLoading(true)
-    setBrief('')
-    setError('')
-
+    setStatus('loading')
     try {
-      const res = await fetch('/api/brief', {
+      const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tickers: tickerList }),
+        body: JSON.stringify({ email }),
       })
-      const data = await res.json()
-      if (data.brief) {
-        setBrief(data.brief)
+      if (res.ok) {
+        setStatus('success')
+        setEmail('')
       } else {
-        setError('Something went wrong. Try again.')
+        setStatus('error')
       }
     } catch {
-      setError('Failed to connect. Is the server running?')
-    } finally {
-      setLoading(false)
+      setStatus('error')
     }
   }
 
@@ -46,122 +54,98 @@ export default function Home() {
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
 
       {/* Nav */}
-      <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center gap-2">
-        <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
-        <span className="text-white font-semibold text-lg tracking-tight">
-          Alpha<span className="text-emerald-400">Brief</span>
-        </span>
-        <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
+      <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
+          <span className="text-white font-semibold text-lg tracking-tight">
+            Alpha<span className="text-emerald-400">Brief</span>
+          </span>
+          <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
+        </div>
+        <Link
+          href="/app"
+          className="text-sm text-slate-400 hover:text-white transition-colors"
+        >
+          Launch app →
+        </Link>
       </nav>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col items-center justify-start px-6 pt-20 pb-16">
-
-        {/* Hero */}
-        {!brief && !loading && (
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-semibold tracking-tight text-white mb-3">
-              Your morning brief,<br />
-              <span className="text-emerald-400">powered by AI.</span>
-            </h2>
-            <p className="text-slate-400 text-lg">
-              Add your tickers and get a sharp, human-readable summary of what matters today.
-            </p>
-          </div>
-        )}
-
-        {/* Input card */}
-        <div className="w-full max-w-xl">
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-widest mb-3">
-            Your tickers
-          </label>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={tickers}
-              onChange={(e) => setTickers(e.target.value)}
-              placeholder="AAPL, NVDA, MSFT, TSLA"
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
-              onKeyDown={(e) => e.key === 'Enter' && generateBrief()}
-            />
-            <button
-              onClick={generateBrief}
-              disabled={loading || !tickers.trim()}
-              className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-semibold px-6 py-4 rounded-xl transition-all text-sm whitespace-nowrap"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
-                  Working...
-                </span>
-              ) : (
-                'Generate →'
-              )}
-            </button>
-          </div>
-
-          {error && (
-            <p className="mt-3 text-red-400 text-sm">{error}</p>
-          )}
+      {/* Hero */}
+      <section className="flex-1 flex flex-col items-center justify-center px-6 py-24 text-center">
+        <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-1.5 mb-8">
+          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+          <span className="text-emerald-400 text-xs font-medium">Building in public · Early access</span>
         </div>
 
-        {/* Brief */}
-        {brief && (
-          <div className="w-full max-w-2xl mt-12">
-            <div className="flex items-center justify-between mb-8">
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">
-                Morning Brief
-              </span>
-              <span className="text-slate-400 text-xs">
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </span>
-            </div>
+        <h1 className="text-5xl font-semibold tracking-tight text-white mb-6 max-w-2xl leading-tight">
+          Know what matters.<br />
+          <span className="text-emerald-400">Skip the noise.</span>
+        </h1>
 
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h2: ({ children }) => (
-                  <h2 className="text-xl font-semibold text-white mt-12 mb-5 pb-4 border-b border-slate-800 first:mt-0 tracking-tight flex items-center gap-2">
-                    <span className="w-1.5 h-5 bg-emerald-500 rounded-full inline-block shrink-0" />
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-widest mt-6 mb-2">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="text-slate-300 text-sm leading-7 mb-3">
-                    {children}
-                  </p>
-                ),
-                strong: ({ children }) => (
-                  <strong className="text-white font-semibold">{children}</strong>
-                ),
-                ul: ({ children }) => (
-                  <ul className="mb-4 space-y-2.5">{children}</ul>
-                ),
-                li: ({ children }) => (
-                  <li className="text-slate-300 text-sm leading-relaxed flex gap-3">
-                    <span className="text-emerald-500 mt-1.5 shrink-0 text-xs">▸</span>
-                    <span>{children}</span>
-                  </li>
-                ),
-                hr: () => (
-                  <div className="my-10 border-t border-slate-800/60" />
-                ),
-              }}
-            >
-              {brief}
-            </ReactMarkdown>
+        <p className="text-slate-400 text-lg max-w-xl mb-10 leading-relaxed">
+          AlphaBrief gives you a sharp, AI-powered morning brief for your portfolio —
+          what moved, what's in the news, and what's coming next. In minutes, not hours.
+        </p>
+
+        {status === 'success' ? (
+          <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-6 py-4">
+            <span className="text-emerald-400 text-xl">✓</span>
+            <div className="text-left">
+              <p className="text-white font-medium text-sm">You're on the list.</p>
+              <p className="text-slate-400 text-xs mt-0.5">We'll reach out when early access opens.</p>
+            </div>
           </div>
+        ) : (
+          <form onSubmit={joinWaitlist} className="flex gap-3 w-full max-w-md">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              required
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-700 text-slate-950 font-semibold px-6 py-3.5 rounded-xl transition-all text-sm whitespace-nowrap"
+            >
+              {status === 'loading' ? 'Joining...' : 'Get early access'}
+            </button>
+          </form>
         )}
-      </main>
+
+        {status === 'error' && (
+          <p className="mt-3 text-red-400 text-xs">Something went wrong. Try again.</p>
+        )}
+
+        <p className="mt-4 text-slate-600 text-xs">
+          No spam. No credit card. Just early access.
+        </p>
+      </section>
+
+      {/* Features */}
+      <section className="px-6 pb-24 max-w-4xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {features.map((f) => (
+            <div
+              key={f.title}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-6"
+            >
+              <span className="text-emerald-400 text-2xl mb-4 block">{f.icon}</span>
+              <h3 className="text-white font-semibold mb-2 text-sm">{f.title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{f.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-800/60 px-8 py-5 flex items-center justify-between">
+        <span className="text-slate-600 text-xs">© 2025 AlphaBrief</span>
+        <span className="text-slate-600 text-xs">Built in public by <span className="text-slate-400">@eyalgilad</span></span>
+      </footer>
+
     </div>
   )
 }
