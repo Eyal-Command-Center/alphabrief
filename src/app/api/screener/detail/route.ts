@@ -3,11 +3,20 @@ import Anthropic from '@anthropic-ai/sdk'
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+const TTL_MS = 20 * 60 * 1000 // 20 minutes
+const cache = new Map<string, { data: unknown; ts: number }>()
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const symbol = searchParams.get('symbol')
 
   if (!symbol) return Response.json({ error: 'Missing symbol' }, { status: 400 })
+
+  // Return cached result if fresh
+  const cached = cache.get(symbol)
+  if (cached && Date.now() - cached.ts < TTL_MS) {
+    return Response.json(cached.data)
+  }
 
   const today = new Date().toISOString().split('T')[0]
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -52,7 +61,7 @@ Be direct. No filler. Flag anything notable with ⚠️ or ✅.`
 
   const aiTake = message.content[0].type === 'text' ? message.content[0].text : ''
 
-  return Response.json({
+  const result = {
     symbol,
     name: profile.name ?? symbol,
     sector: profile.finnhubIndustry ?? '',
@@ -70,5 +79,8 @@ Be direct. No filler. Flag anything notable with ⚠️ or ✅.`
       source: n.source,
     })),
     aiTake,
-  })
+  }
+
+  cache.set(symbol, { data: result, ts: Date.now() })
+  return Response.json(result)
 }
