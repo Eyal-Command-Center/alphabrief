@@ -12,6 +12,8 @@ export default function Home() {
   const [brief, setBrief] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [shareUrl, setShareUrl] = useState('')
+  const [copied, setCopied] = useState(false)
 
   // Auth state
   const [user, setUser] = useState<User | null>(null)
@@ -107,6 +109,9 @@ export default function Home() {
 
     await saveTickers(tickerList)
 
+    setShareUrl('')
+    setCopied(false)
+
     try {
       const res = await fetch('/api/brief', {
         method: 'POST',
@@ -116,6 +121,17 @@ export default function Home() {
       const data = await res.json()
       if (data.brief) {
         setBrief(data.brief)
+        // Save to Supabase and generate share URL
+        if (user) {
+          const { data: saved } = await supabase
+            .from('briefs')
+            .insert({ user_id: user.id, tickers: tickerList, content: data.brief })
+            .select('id')
+            .single()
+          if (saved?.id) {
+            setShareUrl(`${window.location.origin}/brief/${saved.id}`)
+          }
+        }
       } else {
         setError('Something went wrong. Try again.')
       }
@@ -124,6 +140,12 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function copyShareUrl() {
+    await navigator.clipboard.writeText(shareUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   async function handleAuth(e: React.FormEvent) {
@@ -338,13 +360,23 @@ export default function Home() {
               <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">
                 Morning Brief
               </span>
-              <span className="text-slate-400 text-xs">
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </span>
+              <div className="flex items-center gap-4">
+                <span className="text-slate-400 text-xs">
+                  {new Date().toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </span>
+                {shareUrl && (
+                  <button
+                    onClick={copyShareUrl}
+                    className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-600 hover:border-slate-400 rounded-lg px-3 py-1.5 transition-all"
+                  >
+                    {copied ? '✓ Copied!' : '↗ Share'}
+                  </button>
+                )}
+              </div>
             </div>
 
             <ReactMarkdown
