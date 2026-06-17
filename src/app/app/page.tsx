@@ -69,7 +69,13 @@ export default function Home() {
     if (current.includes(ticker)) {
       setTickers(current.filter(t => t !== ticker).join(', '))
     }
-    await saveTickers(updated)
+    // Write directly — don't use saveTickers() which merges with stale state
+    if (user) {
+      await supabase.from('portfolios').upsert(
+        { user_id: user.id, tickers: updated, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      )
+    }
   }
 
   function toggleSavedTicker(ticker: string) {
