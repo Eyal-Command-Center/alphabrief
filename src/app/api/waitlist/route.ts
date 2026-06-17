@@ -40,7 +40,7 @@ export async function POST(req: Request) {
             Thanks for signing up. We're building AlphaBrief in public — an AI-powered morning brief for retail investors who want to know what matters, fast.
           </p>
           <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; margin-bottom: 32px;">
-            We'll reach out when early access opens. In the meantime, follow the build on X: <a href="https://x.com/eyalgilad" style="color: #34d399;">@eyalgilad</a>
+            We'll reach out when early access opens. In the meantime, follow the build on X: <a href="https://x.com/eyal_gilad6" style="color: #34d399;">@eyal_gilad6</a>
           </p>
           <p style="color: #475569; font-size: 13px;">— Eyal, building AlphaBrief</p>
         </div>
