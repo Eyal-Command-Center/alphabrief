@@ -38,6 +38,8 @@ export default function Home() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  const [savedTickers, setSavedTickers] = useState<string[]>([])
+
   // Load saved tickers when user logs in
   useEffect(() => {
     if (!user) return
@@ -48,10 +50,35 @@ export default function Home() {
       .single()
       .then(({ data }) => {
         if (data?.tickers?.length) {
+          setSavedTickers(data.tickers)
           setTickers(data.tickers.join(', '))
         }
       })
   }, [user])
+
+  async function removeSavedTicker(ticker: string) {
+    const updated = savedTickers.filter((t) => t !== ticker)
+    setSavedTickers(updated)
+    // Also remove from input if active
+    const current = tickers.toUpperCase().split(',').map(t => t.trim()).filter(Boolean)
+    if (current.includes(ticker)) {
+      setTickers(current.filter(t => t !== ticker).join(', '))
+    }
+    await saveTickers(updated)
+  }
+
+  function toggleSavedTicker(ticker: string) {
+    const current = tickers
+      .toUpperCase()
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    const isActive = current.includes(ticker)
+    const updated = isActive
+      ? current.filter((t) => t !== ticker)
+      : [...current, ticker]
+    setTickers(updated.join(', '))
+  }
 
   // Save tickers to Supabase
   async function saveTickers(tickerList: string[]) {
@@ -60,6 +87,7 @@ export default function Home() {
       { user_id: user.id, tickers: tickerList, updated_at: new Date().toISOString() },
       { onConflict: 'user_id' }
     )
+    setSavedTickers(tickerList)
   }
 
   async function generateBrief() {
@@ -262,6 +290,39 @@ export default function Home() {
 
           {error && (
             <p className="mt-3 text-red-400 text-sm">{error}</p>
+          )}
+
+          {/* Saved ticker chips */}
+          {savedTickers.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs text-slate-500 mb-2 uppercase tracking-widest font-semibold">Your portfolio</p>
+              <div className="flex flex-wrap gap-2">
+                {savedTickers.map((ticker) => {
+                  const active = tickers.toUpperCase().split(',').map(t => t.trim()).includes(ticker)
+                  return (
+                    <div key={ticker} className="relative group">
+                      <button
+                        onClick={() => toggleSavedTicker(ticker)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border pr-6 ${
+                          active
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        {ticker}
+                      </button>
+                      <button
+                        onClick={() => removeSavedTicker(ticker)}
+                        className="absolute top-0.5 right-1 text-slate-600 hover:text-slate-300 text-xs leading-none transition-colors"
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </div>
 
