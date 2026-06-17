@@ -239,6 +239,7 @@ export default function Home() {
         <div className="flex items-center gap-6">
           <Link href="/app" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Brief</Link>
           <Link href="/app/calendar" className="text-sm text-slate-400 hover:text-white transition-colors">Calendar</Link>
+          <Link href="/app/screener" className="text-sm text-slate-400 hover:text-white transition-colors">Screener</Link>
           <span className="text-slate-500 text-xs">{user.email}</span>
           <button onClick={signOut} className="text-xs text-slate-400 hover:text-white transition-colors">
             Sign out
