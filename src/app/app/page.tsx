@@ -14,6 +14,8 @@ export default function Home() {
   const [error, setError] = useState('')
   const [shareUrl, setShareUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  const [briefId, setBriefId] = useState<string | null>(null)
+  const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null)
 
   // Auth state
   const [user, setUser] = useState<User | null>(null)
@@ -111,6 +113,8 @@ export default function Home() {
 
     setShareUrl('')
     setCopied(false)
+    setBriefId(null)
+    setFeedbackGiven(null)
 
     try {
       const res = await fetch('/api/brief', {
@@ -130,6 +134,7 @@ export default function Home() {
             .single()
           if (saved?.id) {
             setShareUrl(`${window.location.origin}/brief/${saved.id}`)
+                    setBriefId(saved.id)
           }
         }
       } else {
@@ -146,6 +151,16 @@ export default function Home() {
     await navigator.clipboard.writeText(shareUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function submitFeedback(rating: 'up' | 'down') {
+    if (!briefId || !user || feedbackGiven) return
+    setFeedbackGiven(rating)
+    await supabase.from('brief_feedback').insert({
+      brief_id: briefId,
+      user_id: user.id,
+      rating,
+    })
   }
 
   async function handleAuth(e: React.FormEvent) {
@@ -346,6 +361,18 @@ export default function Home() {
             <p className="mt-3 text-red-400 text-sm">{error}</p>
           )}
 
+          {/* Onboarding hint — shown only before any tickers are saved */}
+          {!brief && !loading && savedTickers.length === 0 && (
+            <div className="mt-5 bg-slate-900/60 border border-dashed border-slate-700 rounded-xl p-5 text-center">
+              <p className="text-slate-300 text-sm">
+                Enter stocks you're interested in — e.g. <span className="text-white font-medium">AAPL, NVDA, TSLA</span>
+              </p>
+              <p className="text-slate-500 text-xs mt-1.5">
+                Separate tickers with commas, then hit Generate to get your brief.
+              </p>
+            </div>
+          )}
+
           {/* Saved ticker chips */}
           {savedTickers.length > 0 && (
             <div className="mt-4">
@@ -406,6 +433,7 @@ export default function Home() {
               </div>
             </div>
 
+            <div className="prose-brief">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -444,6 +472,39 @@ export default function Home() {
             >
               {brief}
             </ReactMarkdown>
+            </div>
+
+            {/* Feedback */}
+            <div className="mt-12 pt-6 border-t border-slate-800/60 flex items-center justify-between">
+              <p className="text-slate-500 text-xs">Was this brief useful?</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => submitFeedback('up')}
+                  disabled={feedbackGiven !== null}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                    feedbackGiven === 'up'
+                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-emerald-500/50 hover:text-emerald-400 disabled:cursor-default'
+                  }`}
+                >
+                  👍
+                </button>
+                <button
+                  onClick={() => submitFeedback('down')}
+                  disabled={feedbackGiven !== null}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                    feedbackGiven === 'down'
+                      ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-red-500/50 hover:text-red-400 disabled:cursor-default'
+                  }`}
+                >
+                  👎
+                </button>
+                {feedbackGiven && (
+                  <span className="text-slate-500 text-xs ml-1">Thanks for the feedback!</span>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </main>

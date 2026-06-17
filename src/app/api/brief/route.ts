@@ -62,10 +62,10 @@ One sentence: current price, % change today, notable or not.
 - News item 3 if relevant
 
 ### Upcoming Catalyst
-One sentence on earnings date or key event in the next 30 days. If none: "quiet"
+One sentence on the next earnings date or key event. If nothing notable in the next 30 days, write exactly: "Nothing notable until next earnings."
 
 ### Thesis Check
-One sentence: is anything changing the fundamental story?
+Begin with a sentiment signal on its own line: 🟢 Positive, 🔴 Negative, or 🟡 No change — then one sentence on whether anything is shifting the fundamental story.
 
 ---
 
