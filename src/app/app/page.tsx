@@ -81,14 +81,15 @@ export default function Home() {
     setTickers(updated.join(', '))
   }
 
-  // Save tickers to Supabase
+  // Save tickers to Supabase — merges with existing saved tickers so chips are never removed on generate
   async function saveTickers(tickerList: string[]) {
     if (!user) return
+    const merged = Array.from(new Set([...savedTickers, ...tickerList]))
     await supabase.from('portfolios').upsert(
-      { user_id: user.id, tickers: tickerList, updated_at: new Date().toISOString() },
+      { user_id: user.id, tickers: merged, updated_at: new Date().toISOString() },
       { onConflict: 'user_id' }
     )
-    setSavedTickers(tickerList)
+    setSavedTickers(merged)
   }
 
   async function generateBrief() {
