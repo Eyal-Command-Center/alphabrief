@@ -54,35 +54,35 @@ export default function LandingPage() {
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
 
       {/* Nav */}
-      <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center justify-between">
+      <nav className="border-b border-slate-800/60 px-4 md:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
           <span className="text-white font-semibold text-lg tracking-tight">
             Alpha<span className="text-emerald-400">Brief</span>
           </span>
-          <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
+          <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
         <Link
           href="/app"
-          className="text-sm text-slate-400 hover:text-white transition-colors"
+          className="text-sm text-slate-300 hover:text-white transition-colors"
         >
           Launch app →
         </Link>
       </nav>
 
       {/* Hero */}
-      <section className="flex-1 flex flex-col items-center justify-center px-6 py-24 text-center">
+      <section className="flex-1 flex flex-col items-center justify-center px-6 py-16 md:py-24 text-center">
         <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-1.5 mb-8">
           <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
           <span className="text-emerald-400 text-xs font-medium">Building in public · Early access</span>
         </div>
 
-        <h1 className="text-5xl font-semibold tracking-tight text-white mb-6 max-w-2xl leading-tight">
+        <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-white mb-6 max-w-2xl leading-tight">
           Know what matters.<br />
           <span className="text-emerald-400">Skip the noise.</span>
         </h1>
 
-        <p className="text-slate-400 text-lg max-w-xl mb-10 leading-relaxed">
+        <p className="text-slate-300 text-base md:text-lg max-w-xl mb-10 leading-relaxed">
           AlphaBrief gives you a sharp, AI-powered morning brief for your portfolio —
           what moved, what's in the news, and what's coming next. In minutes, not hours.
         </p>
