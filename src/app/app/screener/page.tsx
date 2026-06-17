@@ -122,17 +122,17 @@ export default function ScreenerPage() {
           <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
         </div>
         <div className="flex items-center gap-6">
-          <Link href="/app" className="text-sm text-slate-400 hover:text-white transition-colors">Brief</Link>
-          <Link href="/app/calendar" className="text-sm text-slate-400 hover:text-white transition-colors">Calendar</Link>
+          <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">Brief</Link>
+          <Link href="/app/calendar" className="text-sm text-slate-300 hover:text-white transition-colors">Calendar</Link>
           <Link href="/app/screener" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Screener</Link>
-          <span className="text-slate-500 text-xs">{user.email}</span>
+          <span className="text-slate-400 text-xs">{user.email}</span>
         </div>
       </nav>
 
       <main className="flex-1 px-6 pt-12 pb-16 max-w-3xl mx-auto w-full">
         <div className="mb-8">
           <h2 className="text-3xl font-semibold tracking-tight text-white mb-2">Screener</h2>
-          <p className="text-slate-400 text-sm">Search any stock or browse by sector for an AI-powered snapshot.</p>
+          <p className="text-slate-300 text-sm">Search any stock or browse by sector for an AI-powered snapshot.</p>
         </div>
 
         {/* When no detail is open: show search + sector filters */}
@@ -206,12 +206,12 @@ export default function ScreenerPage() {
         )}
 
         {detail && !detailLoading && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mt-2">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mt-2">
 
             {/* Back button */}
             <button
               onClick={() => { setSelected(null); setDetail(null) }}
-              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6 group"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors mb-6 group"
             >
               <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
               Back to screener
@@ -225,11 +225,11 @@ export default function ScreenerPage() {
                 )}
                 <div>
                   <div className="flex items-center gap-3">
-                    <h3 className="text-white font-bold text-xl">{detail.symbol}</h3>
+                    <h3 className="text-emerald-400 font-bold text-xl">{detail.symbol}</h3>
                     {(() => { const a = analystLabel(detail.recommendation); return a ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${a.color}`}>{a.label}</span> : null })()}
                   </div>
-                  <p className="text-slate-400 text-sm mt-0.5">{detail.name}</p>
-                  {detail.sector && <p className="text-slate-600 text-xs mt-0.5">{detail.sector}</p>}
+                  <p className="text-slate-300 text-sm mt-0.5">{detail.name}</p>
+                  {detail.sector && <p className="text-slate-400 text-xs mt-0.5">{detail.sector}</p>}
                 </div>
               </div>
               <div className="text-right">
@@ -248,24 +248,24 @@ export default function ScreenerPage() {
                 { label: '52W High', value: detail.high52 ? `$${detail.high52}` : 'N/A' },
                 { label: '52W Low', value: detail.low52 ? `$${detail.low52}` : 'N/A' },
               ].map((m) => (
-                <div key={m.label} className="bg-slate-800/60 rounded-xl px-4 py-3">
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">{m.label}</p>
+                <div key={m.label} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">{m.label}</p>
                   <p className="text-white font-semibold text-sm">{m.value}</p>
                 </div>
               ))}
             </div>
 
             {/* AI Take */}
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 mb-6">
+            <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 mb-6">
               <p className="text-xs text-emerald-400 font-semibold uppercase tracking-widest mb-2">AI Quick Take</p>
-              <p className="text-slate-300 text-sm leading-relaxed">{detail.aiTake}</p>
+              <p className="text-slate-200 text-sm leading-relaxed">{detail.aiTake}</p>
             </div>
 
             {/* News */}
             {detail.news.length > 0 && (
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-3">Recent News</p>
-                <div className="space-y-2">
+                <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-3">Recent News</p>
+                <div className="space-y-2.5">
                   {detail.news.map((n, i) => (
                     <a
                       key={i}
@@ -276,7 +276,7 @@ export default function ScreenerPage() {
                     >
                       <span className="text-emerald-500 mr-2">▸</span>
                       {n.headline}
-                      <span className="text-slate-600 text-xs ml-2">{n.source}</span>
+                      <span className="text-slate-500 text-xs ml-2">{n.source}</span>
                     </a>
                   ))}
                 </div>

@@ -127,17 +127,17 @@ export default function CalendarPage() {
           <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
         </div>
         <div className="flex items-center gap-6">
-          <Link href="/app" className="text-sm text-slate-400 hover:text-white transition-colors">Brief</Link>
+          <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">Brief</Link>
           <Link href="/app/calendar" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Calendar</Link>
-          <Link href="/app/screener" className="text-sm text-slate-400 hover:text-white transition-colors">Screener</Link>
-          <span className="text-slate-500 text-xs">{user.email}</span>
+          <Link href="/app/screener" className="text-sm text-slate-300 hover:text-white transition-colors">Screener</Link>
+          <span className="text-slate-400 text-xs">{user.email}</span>
         </div>
       </nav>
 
       <main className="flex-1 px-6 pt-12 pb-16 max-w-2xl mx-auto w-full">
         <div className="mb-10">
           <h2 className="text-3xl font-semibold tracking-tight text-white mb-2">Earnings Calendar</h2>
-          <p className="text-slate-400 text-sm">Upcoming earnings for your saved tickers — next 60 days.</p>
+          <p className="text-slate-300 text-sm">Upcoming earnings for your saved tickers — next 60 days.</p>
         </div>
 
         {loading && (
@@ -165,31 +165,36 @@ export default function CalendarPage() {
             {events.map((event, i) => (
               <div
                 key={`${event.symbol}-${i}`}
-                className="bg-slate-900 border border-slate-800 rounded-2xl px-6 py-5 flex items-center justify-between"
+                className="bg-slate-900 border border-slate-700 rounded-2xl px-6 py-5 flex items-center justify-between"
               >
                 <div className="flex items-center gap-5">
-                  <div className="text-center min-w-[56px]">
-                    <p className="text-white font-bold text-lg">{event.symbol}</p>
+                  <div className="min-w-[64px]">
+                    <p className="text-emerald-400 font-bold text-lg tracking-tight">{event.symbol}</p>
                   </div>
                   <div>
-                    <p className="text-white text-sm font-medium">{formatDate(event.date)}</p>
-                    <p className="text-slate-500 text-xs mt-0.5">
+                    <p className="text-white text-sm font-semibold">{formatDate(event.date)}</p>
+                    <p className="text-slate-400 text-xs mt-0.5">
                       {event.hour === 'amc' ? 'After close' : event.hour === 'bmo' ? 'Before open' : 'Time TBD'}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                  <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
                     daysUntil(event.date) === 'Today'
-                      ? 'bg-emerald-500/20 text-emerald-400'
+                      ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
                       : daysUntil(event.date) === 'Tomorrow'
-                      ? 'bg-amber-500/20 text-amber-400'
-                      : 'bg-slate-800 text-slate-400'
+                      ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
+                      : 'bg-slate-700 text-slate-200'
                   }`}>
                     {daysUntil(event.date)}
                   </span>
                   {event.epsEstimate !== null && (
-                    <p className="text-slate-500 text-xs mt-2">EPS est. ${event.epsEstimate}</p>
+                    <div className="relative group inline-block mt-2">
+                      <p className="text-slate-400 text-xs cursor-help">EPS est. ${event.epsEstimate}</p>
+                      <div className="absolute top-full right-0 mt-2 w-56 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl text-left">
+                        <strong className="text-white">EPS Estimate</strong> — What analysts expect the company to earn (or lose) per share this quarter. A negative number means an expected loss. If the actual result beats this, the stock often rises.
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -202,35 +207,35 @@ export default function CalendarPage() {
           <div className="mt-12">
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-white mb-1">Market Events</h3>
-              <p className="text-slate-400 text-sm">High-impact macro events — FOMC, CPI, jobs reports, and more.</p>
+              <p className="text-slate-300 text-sm">High-impact macro events — FOMC, CPI, jobs reports, and more.</p>
             </div>
             <div className="space-y-3">
               {macroEvents.map((event, i) => (
                 <div
                   key={i}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl px-6 py-5 flex items-center justify-between"
+                  className="bg-slate-900 border border-slate-700 rounded-2xl px-6 py-5 flex items-center justify-between"
                 >
                   <div>
-                    <p className="text-white text-sm font-medium">{event.event}</p>
+                    <p className="text-white text-sm font-semibold">{event.event}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="text-slate-500 text-xs">{formatDate(event.date)}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      <p className="text-slate-400 text-xs">{formatDate(event.date)}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         event.category === 'Fed'
-                          ? 'bg-violet-500/20 text-violet-400'
+                          ? 'bg-violet-500/25 text-violet-300 border border-violet-500/30'
                           : event.category === 'Inflation'
-                          ? 'bg-amber-500/20 text-amber-400'
-                          : 'bg-blue-500/20 text-blue-400'
+                          ? 'bg-amber-500/25 text-amber-300 border border-amber-500/30'
+                          : 'bg-blue-500/25 text-blue-300 border border-blue-500/30'
                       }`}>
                         {event.category}
                       </span>
                     </div>
                   </div>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                  <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
                     daysUntil(event.date) === 'Today'
-                      ? 'bg-emerald-500/20 text-emerald-400'
+                      ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
                       : daysUntil(event.date) === 'Tomorrow'
-                      ? 'bg-amber-500/20 text-amber-400'
-                      : 'bg-slate-800 text-slate-400'
+                      ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
+                      : 'bg-slate-700 text-slate-200'
                   }`}>
                     {daysUntil(event.date)}
                   </span>

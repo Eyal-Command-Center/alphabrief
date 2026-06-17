@@ -238,10 +238,10 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-6">
           <Link href="/app" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Brief</Link>
-          <Link href="/app/calendar" className="text-sm text-slate-400 hover:text-white transition-colors">Calendar</Link>
-          <Link href="/app/screener" className="text-sm text-slate-400 hover:text-white transition-colors">Screener</Link>
-          <span className="text-slate-500 text-xs">{user.email}</span>
-          <button onClick={signOut} className="text-xs text-slate-400 hover:text-white transition-colors">
+          <Link href="/app/calendar" className="text-sm text-slate-300 hover:text-white transition-colors">Calendar</Link>
+          <Link href="/app/screener" className="text-sm text-slate-300 hover:text-white transition-colors">Screener</Link>
+          <span className="text-slate-400 text-xs">{user.email}</span>
+          <button onClick={signOut} className="text-xs text-slate-300 hover:text-white transition-colors">
             Sign out
           </button>
         </div>
@@ -257,7 +257,7 @@ export default function Home() {
               Your morning brief,<br />
               <span className="text-emerald-400">powered by AI.</span>
             </h2>
-            <p className="text-slate-400 text-lg">
+            <p className="text-slate-300 text-lg">
               Add your tickers and get a sharp, human-readable summary of what matters today.
             </p>
           </div>
@@ -300,7 +300,7 @@ export default function Home() {
           {/* Saved ticker chips */}
           {savedTickers.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs text-slate-500 mb-2 uppercase tracking-widest font-semibold">Your portfolio</p>
+              <p className="text-xs text-slate-400 mb-2 uppercase tracking-widest font-semibold">Your portfolio</p>
               <div className="flex flex-wrap gap-2">
                 {savedTickers.map((ticker) => {
                   const active = tickers.toUpperCase().split(',').map(t => t.trim()).includes(ticker)
@@ -310,15 +310,15 @@ export default function Home() {
                         onClick={() => toggleSavedTicker(ticker)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border pr-6 ${
                           active
-                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                            : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-slate-500 hover:text-white'
                         }`}
                       >
                         {ticker}
                       </button>
                       <button
                         onClick={() => removeSavedTicker(ticker)}
-                        className="absolute top-0.5 right-1 text-slate-600 hover:text-slate-300 text-xs leading-none transition-colors"
+                        className="absolute top-0.5 right-1 text-slate-500 hover:text-white text-xs leading-none transition-colors"
                         title="Remove"
                       >
                         ×
