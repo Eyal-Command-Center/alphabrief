@@ -64,9 +64,9 @@ export default function LandingPage() {
         </div>
         <Link
           href="/app"
-          className="text-sm text-slate-300 hover:text-white transition-colors"
+          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all"
         >
-          Launch app →
+          Try it free →
         </Link>
       </nav>
 

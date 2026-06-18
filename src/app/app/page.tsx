@@ -382,7 +382,7 @@ export default function Home() {
           {/* Saved ticker chips */}
           {savedTickers.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs text-slate-400 mb-2 uppercase tracking-widest font-semibold">Your portfolio</p>
+              <p className="text-xs text-slate-400 mb-2 uppercase tracking-widest font-semibold">Saved stocks</p>
               <div className="flex flex-wrap gap-2">
                 {savedTickers.map((ticker) => {
                   const active = tickers.toUpperCase().split(',').map(t => t.trim()).includes(ticker)
