@@ -1,21 +1,171 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
-export default function Home() {
+interface StockDetail {
+  symbol: string
+  name: string
+  sector: string
+  logo: string
+  price: number
+  change: number
+  marketCap: number | null
+  pe: number | null
+  high52: number | null
+  low52: number | null
+  recommendation: { buy: number; hold: number; sell: number } | null
+  news: { headline: string; url: string; source: string }[]
+  quickTake: string
+  thesis: string
+  catalyst: string
+}
+
+interface CardState {
+  symbol: string
+  loading: boolean
+  data: StockDetail | null
+  error: boolean
+}
+
+function formatMarketCap(mc: number | null) {
+  if (!mc) return 'N/A'
+  if (mc >= 1000) return `$${(mc / 1000).toFixed(1)}T`
+  return `$${mc.toFixed(0)}B`
+}
+
+function analystLabel(rec: StockDetail['recommendation']) {
+  if (!rec) return null
+  const total = rec.buy + rec.hold + rec.sell
+  if (!total) return null
+  const buyPct = rec.buy / total
+  if (buyPct >= 0.6) return { label: 'Buy', color: 'text-emerald-400 bg-emerald-500/20' }
+  if (buyPct >= 0.4) return { label: 'Hold', color: 'text-amber-400 bg-amber-500/20' }
+  return { label: 'Sell', color: 'text-red-400 bg-red-500/20' }
+}
+
+function StockCard({ card }: { card: CardState }) {
+  if (card.loading) {
+    return (
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 flex items-center gap-3">
+        <div className="w-5 h-5 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin shrink-0" />
+        <span className="text-slate-400 text-sm">Loading {card.symbol}...</span>
+      </div>
+    )
+  }
+
+  if (card.error || !card.data) {
+    return (
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
+        <p className="text-slate-400 text-sm">
+          Couldn&apos;t find data for <span className="text-white font-semibold">{card.symbol}</span> — double-check the ticker symbol and try again.
+        </p>
+      </div>
+    )
+  }
+
+  const d = card.data
+  const analyst = analystLabel(d.recommendation)
+
+  return (
+    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4">
+          {d.logo && (
+            <img src={d.logo} alt={d.symbol} className="w-10 h-10 rounded-lg bg-white object-contain p-1 shrink-0" />
+          )}
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h3 className="text-emerald-400 font-bold text-xl">{d.symbol}</h3>
+              {analyst && (
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${analyst.color}`}>
+                  {analyst.label}
+                </span>
+              )}
+            </div>
+            <p className="text-slate-300 text-sm mt-0.5">{d.name}</p>
+            {d.sector && <p className="text-slate-500 text-xs mt-0.5">{d.sector}</p>}
+          </div>
+        </div>
+        <div className="text-right shrink-0 ml-4">
+          <p className="text-white font-bold text-2xl">${d.price?.toFixed(2)}</p>
+          <p className={`text-sm font-medium ${d.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {d.change >= 0 ? '+' : ''}{d.change?.toFixed(2)}%
+          </p>
+        </div>
+      </div>
+
+      {/* Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: 'Market Cap', value: formatMarketCap(d.marketCap) },
+          { label: 'P/E Ratio', value: d.pe && d.pe > 0 ? d.pe.toFixed(1) : 'Pre-profit' },
+          { label: '52W High', value: d.high52 ? `$${d.high52}` : 'N/A' },
+          { label: '52W Low', value: d.low52 ? `$${d.low52}` : 'N/A' },
+        ].map((m) => (
+          <div key={m.label} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">{m.label}</p>
+            <p className="text-white font-semibold text-sm">{m.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick Take */}
+      {d.quickTake && (
+        <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 mb-4">
+          <p className="text-xs text-emerald-400 font-semibold uppercase tracking-widest mb-2">Quick Take</p>
+          <p className="text-slate-200 text-sm leading-relaxed">{d.quickTake}</p>
+        </div>
+      )}
+
+      {/* Thesis + Catalyst */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+        {d.thesis && (
+          <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mb-2">Thesis Check</p>
+            <p className="text-slate-200 text-sm leading-relaxed">{d.thesis}</p>
+          </div>
+        )}
+        {d.catalyst && (
+          <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mb-2">Upcoming Catalyst</p>
+            <p className="text-slate-200 text-sm leading-relaxed">{d.catalyst}</p>
+          </div>
+        )}
+      </div>
+
+      {/* News */}
+      {d.news.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-3">Recent News</p>
+          <div className="space-y-2.5">
+            {d.news.map((n, i) => (
+              <a
+                key={i}
+                href={n.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-slate-300 text-sm hover:text-white transition-colors leading-snug"
+              >
+                <span className="text-emerald-500 mr-2">▸</span>
+                {n.headline}
+                <span className="text-slate-500 text-xs ml-2">{n.source}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function MyStocksPage() {
   const [tickers, setTickers] = useState('')
-  const [brief, setBrief] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [shareUrl, setShareUrl] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [briefId, setBriefId] = useState<string | null>(null)
-  const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null)
+  const [cards, setCards] = useState<CardState[]>([])
 
   // Auth state
   const [user, setUser] = useState<User | null>(null)
@@ -27,25 +177,21 @@ export default function Home() {
   const [authSubmitting, setAuthSubmitting] = useState(false)
   const [authSuccess, setAuthSuccess] = useState('')
 
+  const [savedTickers, setSavedTickers] = useState<string[]>([])
+
   const supabase = createClient()
 
-  // Check session on load + listen for changes
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
       setAuthLoading(false)
     })
-
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
-
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  const [savedTickers, setSavedTickers] = useState<string[]>([])
-
-  // Load saved tickers when user logs in
   useEffect(() => {
     if (!user) return
     supabase
@@ -56,116 +202,69 @@ export default function Home() {
       .then(({ data }) => {
         if (data?.tickers?.length) {
           setSavedTickers(data.tickers)
-          setTickers(data.tickers.join(', '))
+          // Don't auto-populate input — chips are off by default, user toggles them in
         }
       })
   }, [user])
 
+  async function persistTickers(list: string[]) {
+    if (!user) return
+    await supabase.from('portfolios').upsert(
+      { user_id: user.id, tickers: list, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    )
+  }
+
   async function removeSavedTicker(ticker: string) {
     const updated = savedTickers.filter((t) => t !== ticker)
     setSavedTickers(updated)
-    // Also remove from input if active
     const current = tickers.toUpperCase().split(',').map(t => t.trim()).filter(Boolean)
     if (current.includes(ticker)) {
       setTickers(current.filter(t => t !== ticker).join(', '))
     }
-    // Write directly — don't use saveTickers() which merges with stale state
-    if (user) {
-      await supabase.from('portfolios').upsert(
-        { user_id: user.id, tickers: updated, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
-      )
-    }
+    await persistTickers(updated)
   }
 
   function toggleSavedTicker(ticker: string) {
-    const current = tickers
-      .toUpperCase()
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
+    const current = tickers.toUpperCase().split(',').map(t => t.trim()).filter(Boolean)
     const isActive = current.includes(ticker)
-    const updated = isActive
-      ? current.filter((t) => t !== ticker)
-      : [...current, ticker]
+    const updated = isActive ? current.filter(t => t !== ticker) : [...current, ticker]
     setTickers(updated.join(', '))
   }
 
-  // Save tickers to Supabase — merges with existing saved tickers so chips are never removed on generate
-  async function saveTickers(tickerList: string[]) {
-    if (!user) return
+  async function loadCard(symbol: string): Promise<StockDetail | null> {
+    const res = await fetch(`/api/screener/detail?symbol=${symbol}`)
+    if (!res.ok) return null
+    return res.json()
+  }
+
+  // Chip click — load single card, replace current view
+  async function loadSingleStock(symbol: string) {
+    setCards([{ symbol, loading: true, data: null, error: false }])
+    const data = await loadCard(symbol)
+    setCards([{ symbol, loading: false, data, error: !data }])
+  }
+
+  // Generate — load all tickers as progressive feed
+  async function generateAll() {
+    const tickerList = tickers.toUpperCase().split(',').map(t => t.trim()).filter(Boolean)
+    if (!tickerList.length) return
+
+    // Save tickers (merge with existing)
     const merged = Array.from(new Set([...savedTickers, ...tickerList]))
-    await supabase.from('portfolios').upsert(
-      { user_id: user.id, tickers: merged, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id' }
-    )
     setSavedTickers(merged)
-  }
+    await persistTickers(merged)
 
-  async function generateBrief() {
-    const tickerList = tickers
-      .toUpperCase()
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
+    // Set all cards to loading state
+    setCards(tickerList.map(symbol => ({ symbol, loading: true, data: null, error: false })))
 
-    if (tickerList.length === 0) return
-
-    setLoading(true)
-    setBrief('')
-    setError('')
-
-    await saveTickers(tickerList)
-
-    setShareUrl('')
-    setCopied(false)
-    setBriefId(null)
-    setFeedbackGiven(null)
-
-    try {
-      const res = await fetch('/api/brief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tickers: tickerList }),
-      })
-      const data = await res.json()
-      if (data.brief) {
-        setBrief(data.brief)
-        // Save to Supabase and generate share URL
-        if (user) {
-          const { data: saved } = await supabase
-            .from('briefs')
-            .insert({ user_id: user.id, tickers: tickerList, content: data.brief })
-            .select('id')
-            .single()
-          if (saved?.id) {
-            setShareUrl(`${window.location.origin}/brief/${saved.id}`)
-                    setBriefId(saved.id)
-          }
-        }
-      } else {
-        setError('Something went wrong. Try again.')
-      }
-    } catch {
-      setError('Failed to connect. Is the server running?')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function copyShareUrl() {
-    await navigator.clipboard.writeText(shareUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  async function submitFeedback(rating: 'up' | 'down') {
-    if (!briefId || !user || feedbackGiven) return
-    setFeedbackGiven(rating)
-    await supabase.from('brief_feedback').insert({
-      brief_id: briefId,
-      user_id: user.id,
-      rating,
+    // Fetch all in parallel — as each resolves, move it to the top
+    tickerList.forEach(async (symbol) => {
+      const data = await loadCard(symbol)
+      setCards(prev => [
+        { symbol, loading: false, data, error: !data },
+        ...prev.filter(c => c.symbol !== symbol),
+      ])
     })
   }
 
@@ -174,7 +273,6 @@ export default function Home() {
     setAuthSubmitting(true)
     setAuthError('')
     setAuthSuccess('')
-
     if (authMode === 'signup') {
       const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword })
       if (error) setAuthError(error.message)
@@ -183,17 +281,18 @@ export default function Home() {
       const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword })
       if (error) setAuthError(error.message)
     }
-
     setAuthSubmitting(false)
   }
 
   async function signOut() {
     await supabase.auth.signOut()
-    setBrief('')
+    setCards([])
     setTickers('')
+    setSavedTickers([])
   }
 
-  // Loading state
+  const isLoading = cards.some(c => c.loading)
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -202,11 +301,10 @@ export default function Home() {
     )
   }
 
-  // Auth wall
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-        <nav className="border-b border-slate-800/60 px-8 py-4 flex items-center gap-2">
+        <nav className="border-b border-slate-800/60 px-4 md:px-8 py-4 flex items-center gap-2">
           <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
           <span className="text-white font-semibold text-lg tracking-tight">
             Alpha<span className="text-emerald-400">Brief</span>
@@ -220,10 +318,9 @@ export default function Home() {
               {authMode === 'login' ? 'Welcome back' : 'Create your account'}
             </h2>
             <p className="text-slate-400 text-sm text-center mb-8">
-              {authMode === 'login' ? 'Sign in to access your brief.' : 'Free during beta.'}
+              {authMode === 'login' ? 'Sign in to access your stocks.' : 'Free during beta.'}
             </p>
 
-            {/* Google sign-in */}
             <button
               onClick={() => supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -293,7 +390,6 @@ export default function Home() {
     )
   }
 
-  // Main app (authenticated)
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
 
@@ -307,9 +403,8 @@ export default function Home() {
           <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
         <div className="flex items-center gap-3 md:gap-6">
-          <Link href="/app" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Brief</Link>
+          <Link href="/app" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">My Stocks</Link>
           <Link href="/app/calendar" className="text-sm text-slate-300 hover:text-white transition-colors">Calendar</Link>
-          <Link href="/app/screener" className="text-sm text-slate-300 hover:text-white transition-colors">Screener</Link>
           <span className="text-slate-400 text-xs hidden md:inline">{user.email}</span>
           <button onClick={signOut} className="text-xs text-slate-300 hover:text-white transition-colors">
             Sign out
@@ -317,24 +412,23 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col items-center justify-start px-6 pt-20 pb-16">
+      <main className="flex-1 flex flex-col items-center justify-start px-4 md:px-6 pt-12 pb-16">
 
-        {/* Hero */}
-        {!brief && !loading && (
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-semibold tracking-tight text-white mb-3">
-              Your morning brief,<br />
-              <span className="text-emerald-400">powered by AI.</span>
+        {/* Hero — only when no cards */}
+        {cards.length === 0 && (
+          <div className="text-center mb-10 w-full max-w-xl">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3">
+              Your stocks,<br />
+              <span className="text-emerald-400">at a glance.</span>
             </h2>
-            <p className="text-slate-300 text-lg">
-              Add your tickers and get a sharp, human-readable summary of what matters today.
+            <p className="text-slate-300 text-base">
+              Add tickers below and get a full snapshot for each — price, thesis, catalyst, and news.
             </p>
           </div>
         )}
 
-        {/* Input card */}
-        <div className="w-full max-w-xl">
+        {/* Search + Generate — hidden when cards are showing */}
+        <div className={`w-full max-w-xl ${cards.length > 0 ? 'hidden' : ''}`}>
           <label className="block text-xs font-semibold text-slate-300 uppercase tracking-widest mb-3">
             Your tickers
           </label>
@@ -343,38 +437,32 @@ export default function Home() {
               type="text"
               value={tickers}
               onChange={(e) => setTickers(e.target.value)}
-              placeholder="AAPL, NVDA, MSFT, TSLA"
+              placeholder="e.g. AAPL, NVDA, TSLA"
               className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
-              onKeyDown={(e) => e.key === 'Enter' && generateBrief()}
+              onKeyDown={(e) => e.key === 'Enter' && generateAll()}
             />
             <button
-              onClick={generateBrief}
-              disabled={loading || !tickers.trim()}
+              onClick={generateAll}
+              disabled={isLoading || !tickers.trim()}
               className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-semibold px-6 py-4 rounded-xl transition-all text-sm whitespace-nowrap"
             >
-              {loading ? (
+              {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
-                  Working...
+                  Loading...
                 </span>
-              ) : (
-                'Generate →'
-              )}
+              ) : 'Generate →'}
             </button>
           </div>
 
-          {error && (
-            <p className="mt-3 text-red-400 text-sm">{error}</p>
-          )}
-
-          {/* Onboarding hint — shown only before any tickers are saved */}
-          {!brief && !loading && savedTickers.length === 0 && (
+          {/* Onboarding hint */}
+          {cards.length === 0 && savedTickers.length === 0 && (
             <div className="mt-5 bg-slate-900/60 border border-dashed border-slate-700 rounded-xl p-5 text-center">
               <p className="text-slate-300 text-sm">
-                Enter stocks you're interested in — e.g. <span className="text-white font-medium">AAPL, NVDA, TSLA</span>
+                Enter stocks you&apos;re interested in — e.g. <span className="text-white font-medium">AAPL, NVDA, TSLA</span>
               </p>
               <p className="text-slate-500 text-xs mt-1.5">
-                Separate tickers with commas, then hit Generate to get your brief.
+                Separate tickers with commas, then hit Generate.
               </p>
             </div>
           )}
@@ -413,104 +501,21 @@ export default function Home() {
           )}
         </div>
 
-        {/* Brief */}
-        {brief && (
-          <div className="w-full max-w-2xl mt-12">
-            <div className="flex items-center justify-between mb-8">
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">
-                Morning Brief
-              </span>
-              <div className="flex items-center gap-4">
-                <span className="text-slate-400 text-xs">
-                  {new Date().toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </span>
-                {shareUrl && (
-                  <button
-                    onClick={copyShareUrl}
-                    className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white border border-slate-600 hover:border-slate-400 rounded-lg px-3 py-1.5 transition-all"
-                  >
-                    {copied ? '✓ Copied!' : '↗ Share'}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="prose-brief">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h2: ({ children }) => (
-                  <h2 className="text-xl font-semibold text-white mt-12 mb-5 pb-4 border-b border-slate-800 first:mt-0 tracking-tight flex items-center gap-2">
-                    <span className="w-1.5 h-5 bg-emerald-500 rounded-full inline-block shrink-0" />
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-widest mt-6 mb-2">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="text-slate-300 text-sm leading-7 mb-3">
-                    {children}
-                  </p>
-                ),
-                strong: ({ children }) => (
-                  <strong className="text-white font-semibold">{children}</strong>
-                ),
-                ul: ({ children }) => (
-                  <ul className="mb-4 space-y-2.5">{children}</ul>
-                ),
-                li: ({ children }) => (
-                  <li className="text-slate-300 text-sm leading-relaxed flex gap-3">
-                    <span className="text-emerald-500 mt-1.5 shrink-0 text-xs">▸</span>
-                    <span>{children}</span>
-                  </li>
-                ),
-                hr: () => (
-                  <div className="my-10 border-t border-slate-800/60" />
-                ),
-              }}
+        {/* Cards feed */}
+        {cards.length > 0 && (
+          <div className="w-full max-w-2xl mt-10 space-y-6">
+            {/* Back / clear */}
+            <button
+              onClick={() => setCards([])}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group"
             >
-              {brief}
-            </ReactMarkdown>
-            </div>
+              <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
+              Back to search
+            </button>
 
-            {/* Feedback */}
-            <div className="mt-12 pt-6 border-t border-slate-800/60 flex items-center justify-between">
-              <p className="text-slate-500 text-xs">Was this brief useful?</p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => submitFeedback('up')}
-                  disabled={feedbackGiven !== null}
-                  className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                    feedbackGiven === 'up'
-                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-emerald-500/50 hover:text-emerald-400 disabled:cursor-default'
-                  }`}
-                >
-                  👍
-                </button>
-                <button
-                  onClick={() => submitFeedback('down')}
-                  disabled={feedbackGiven !== null}
-                  className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                    feedbackGiven === 'down'
-                      ? 'bg-red-500/20 border-red-500/50 text-red-400'
-                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-red-500/50 hover:text-red-400 disabled:cursor-default'
-                  }`}
-                >
-                  👎
-                </button>
-                {feedbackGiven && (
-                  <span className="text-slate-500 text-xs ml-1">Thanks for the feedback!</span>
-                )}
-              </div>
-            </div>
+            {cards.map((card) => (
+              <StockCard key={card.symbol} card={card} />
+            ))}
           </div>
         )}
       </main>

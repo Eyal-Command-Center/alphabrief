@@ -127,9 +127,8 @@ export default function CalendarPage() {
           <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
         <div className="flex items-center gap-3 md:gap-6">
-          <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">Brief</Link>
+          <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">My Stocks</Link>
           <Link href="/app/calendar" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Calendar</Link>
-          <Link href="/app/screener" className="text-sm text-slate-300 hover:text-white transition-colors">Screener</Link>
           <span className="text-slate-400 text-xs hidden md:inline">{user.email}</span>
         </div>
       </nav>

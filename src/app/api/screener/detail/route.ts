@@ -20,46 +20,78 @@ export async function GET(req: Request) {
 
   const today = new Date().toISOString().split('T')[0]
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const [profileRes, quoteRes, metricsRes, recommendRes, newsRes] = await Promise.all([
+  const [profileRes, quoteRes, metricsRes, recommendRes, newsRes, earningsRes] = await Promise.all([
     fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${weekAgo}&to=${today}&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${in30Days}&symbol=${symbol}&token=${FINNHUB_TOKEN}`),
   ])
 
-  const [profile, quote, metrics, recommendations, newsRaw] = await Promise.all([
+  const [profile, quote, metrics, recommendations, newsRaw, earningsRaw] = await Promise.all([
     profileRes.json(),
     quoteRes.json(),
     metricsRes.json(),
     recommendRes.json(),
     newsRes.json(),
+    earningsRes.json(),
   ])
 
   const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 4) : []
   const latestRec = Array.isArray(recommendations) ? recommendations[0] : null
+  const nextEarnings = earningsRaw?.earningsCalendar?.[0] ?? null
 
-  // Generate AI quick take
-  const prompt = `You are a sharp equity analyst. Give a 3-sentence quick take on ${symbol} (${profile.name ?? symbol}) for a retail investor.
+  const catalystHint = nextEarnings
+    ? `Next earnings: ${nextEarnings.date} (${nextEarnings.hour === 'amc' ? 'after close' : nextEarnings.hour === 'bmo' ? 'before open' : 'time TBD'}${nextEarnings.epsEstimate != null ? `, EPS est. $${nextEarnings.epsEstimate}` : ''})`
+    : 'No earnings found in next 30 days'
+
+  const eps = metrics?.metric?.epsBasicExclExtraTTM
+  const isProfitable = eps !== null && eps !== undefined && eps > 0
+  const peValue = metrics?.metric?.peBasicExclExtraTTM
+  const peDisplay = isProfitable && peValue && peValue > 0 ? peValue.toFixed(1) : null
+
+  const prompt = `You are a sharp equity analyst writing for a retail investor. Given this data on ${symbol} (${profile.name ?? symbol}), return a JSON object with exactly these three fields:
+
+{
+  "quickTake": "2-3 sentences on the stock's current situation — price action, what's driving it, anything worth flagging. Use ⚠️ for risks, ✅ for positives.",
+  "thesis": "Start with exactly one of: 🟢 Positive, 🔴 Negative, or 🟡 No change — then one sentence on the fundamental story and whether anything is shifting.",
+  "catalyst": "One sentence on the next key event. Use the earnings data provided. If nothing notable: 'Nothing notable until next earnings.'"
+}
 
 Data:
-- Price: $${quote.c} (${quote.dp > 0 ? '+' : ''}${quote.dp?.toFixed(2)}% today)
+- Price: $${quote.c} (${quote.dp > 0 ? '+' : ''}${quote.dp?.toFixed(2)}% today — use this exact figure)
 - Market cap: ${profile.marketCapitalization ? '$' + (profile.marketCapitalization / 1000).toFixed(1) + 'B' : 'N/A'}
-- PE ratio: ${metrics?.metric?.peBasicExclExtraTTM?.toFixed(1) ?? 'N/A'}
+- Profitable: ${isProfitable ? 'Yes' : 'No — pre-profit company, EPS is negative or zero'}
+- PE ratio: ${peDisplay ? peDisplay : 'NOT APPLICABLE — do not cite PE, the company has no positive earnings'}
 - 52w high/low: $${metrics?.metric?.['52WeekHigh'] ?? 'N/A'} / $${metrics?.metric?.['52WeekLow'] ?? 'N/A'}
 - Analyst consensus: ${latestRec ? `${latestRec.buy} buy / ${latestRec.hold} hold / ${latestRec.sell} sell` : 'N/A'}
-- Recent news: ${news.slice(0, 2).map((n: { headline: string }) => n.headline).join(' | ')}
+- Earnings: ${catalystHint}
+- Recent headlines: ${news.slice(0, 2).map((n: { headline: string }) => n.headline).join(' | ')}
 
-Be direct. No filler. Flag anything notable with ⚠️ or ✅.`
+Rules:
+- Be direct. No filler. No "it's worth noting", "it's important to", "notably".
+- Use the exact price/change numbers provided.
+- If the company is pre-profit, never cite PE. The relevant valuation framing is EV/Sales or simply that the stock is priced on future growth, not current earnings.
+- On analyst consensus: high buy ratings on a speculative or pre-profit name often mean the name is already institutionally discovered and fully covered — this is not automatically a positive signal. Flag it as saturation if relevant, not as conviction.
+- Return only valid JSON. No markdown code fences. No extra text.`
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 300,
+    max_tokens: 400,
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const aiTake = message.content[0].type === 'text' ? message.content[0].text : ''
+  const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+  let parsed = { quickTake: '', thesis: '', catalyst: '' }
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    parsed.quickTake = cleaned
+  }
 
   const result = {
     symbol,
@@ -78,7 +110,9 @@ Be direct. No filler. Flag anything notable with ⚠️ or ✅.`
       url: n.url,
       source: n.source,
     })),
-    aiTake,
+    quickTake: parsed.quickTake,
+    thesis: parsed.thesis,
+    catalyst: parsed.catalyst,
   }
 
   cache.set(symbol, { data: result, ts: Date.now() })
