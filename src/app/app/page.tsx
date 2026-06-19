@@ -236,6 +236,7 @@ export default function MyStocksPage() {
     const symbol = t.toUpperCase()
     setTickers(symbol)
     setHasGenerated(true)
+    setSavedTickers(prev => Array.from(new Set([...prev, symbol])))
     setCards([{ symbol, loading: true, data: null, error: false }])
     fetch(`/api/screener/detail?symbol=${symbol}`)
       .then(r => r.ok ? r.json() : null)

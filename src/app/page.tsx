@@ -1,15 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export default function LandingPage() {
   const [ticker, setTicker] = useState('')
+  const [suggestions, setSuggestions] = useState<{ symbol: string; name: string }[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const router = useRouter()
+  const searchRef = useRef<HTMLDivElement>(null)
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleInput(value: string) {
+    setTicker(value)
+    if (debounce.current) clearTimeout(debounce.current)
+    if (!value.trim()) { setSuggestions([]); setShowSuggestions(false); return }
+    debounce.current = setTimeout(async () => {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(value.trim())}`)
+      const data = await res.json()
+      setSuggestions(data.results ?? [])
+      setShowSuggestions((data.results?.length ?? 0) > 0)
+    }, 300)
+  }
+
+  function selectSuggestion(symbol: string) {
+    setSuggestions([])
+    setShowSuggestions(false)
+    router.push(`/app?t=${symbol}`)
+  }
 
   function handleTry(e: React.FormEvent) {
     e.preventDefault()
+    if (showSuggestions && suggestions.length > 0) {
+      selectSuggestion(suggestions[0].symbol)
+      return
+    }
     const t = ticker.trim().toUpperCase()
     router.push(t ? `/app?t=${t}` : '/app')
   }
@@ -51,13 +77,33 @@ export default function LandingPage() {
           </p>
 
           <form onSubmit={handleTry} className="flex gap-3 mb-3">
-            <input
-              type="text"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              placeholder="Try AAPL, NVDA, TSLA..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/60 text-sm transition-colors"
-            />
+            <div className="relative flex-1" ref={searchRef}>
+              <input
+                type="text"
+                value={ticker}
+                onChange={(e) => handleInput(e.target.value)}
+                placeholder="Ticker or company name..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/60 text-sm transition-colors"
+                onKeyDown={(e) => e.key === 'Escape' && setShowSuggestions(false)}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.symbol}
+                      type="button"
+                      onMouseDown={() => selectSuggestion(s.symbol)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <span className="text-emerald-400 font-semibold text-sm">{s.symbol}</span>
+                      <span className="text-slate-400 text-xs ml-3 truncate">{s.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               type="submit"
               className="bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-6 py-4 rounded-xl transition-all text-sm whitespace-nowrap"
