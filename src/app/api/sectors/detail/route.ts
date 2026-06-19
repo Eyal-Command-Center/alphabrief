@@ -3,86 +3,112 @@ import Anthropic from '@anthropic-ai/sdk'
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const TTL_MS = 20 * 60 * 1000
-const cache = new Map<string, { data: unknown; ts: number }>()
+const TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
-const SECTORS: Record<string, { etf: string; topStocks: string[]; description: string }> = {
-  technology:       { etf: 'XLK', topStocks: ['NVDA', 'AAPL', 'MSFT'], description: 'Technology' },
-  healthcare:       { etf: 'XLV', topStocks: ['LLY', 'UNH', 'JNJ'],   description: 'Healthcare' },
-  financials:       { etf: 'XLF', topStocks: ['JPM', 'BAC', 'V'],      description: 'Financials' },
-  energy:           { etf: 'XLE', topStocks: ['XOM', 'CVX', 'COP'],    description: 'Energy' },
-  'consumer-disc':  { etf: 'XLY', topStocks: ['AMZN', 'TSLA', 'MCD'], description: 'Consumer Discretionary' },
-  industrials:      { etf: 'XLI', topStocks: ['CAT', 'UNP', 'GE'],    description: 'Industrials' },
-  'comm-services':  { etf: 'XLC', topStocks: ['META', 'GOOGL', 'NFLX'], description: 'Communication Services' },
-}
+const SECTORS = [
+  { key: 'technology',     name: 'Technology',             etf: 'XLK', topStocks: ['NVDA', 'AAPL', 'MSFT'] },
+  { key: 'healthcare',     name: 'Healthcare',             etf: 'XLV', topStocks: ['LLY', 'UNH', 'JNJ'] },
+  { key: 'financials',     name: 'Financials',             etf: 'XLF', topStocks: ['JPM', 'BAC', 'V'] },
+  { key: 'energy',         name: 'Energy',                 etf: 'XLE', topStocks: ['XOM', 'CVX', 'COP'] },
+  { key: 'consumer-disc',  name: 'Consumer Discretionary', etf: 'XLY', topStocks: ['AMZN', 'TSLA', 'MCD'] },
+  { key: 'industrials',    name: 'Industrials',            etf: 'XLI', topStocks: ['CAT', 'UNP', 'GE'] },
+  { key: 'comm-services',  name: 'Communication Services', etf: 'XLC', topStocks: ['META', 'GOOGL', 'NFLX'] },
+]
+
+let cache: { data: unknown; ts: number } | null = null
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')?.toLowerCase()
 
-  if (!sector || !SECTORS[sector]) {
-    return Response.json({ error: 'Invalid sector' }, { status: 400 })
+  // Return cached full result if fresh
+  if (cache && Date.now() - cache.ts < TTL_MS) {
+    const all = cache.data as Record<string, unknown>
+    if (sector) {
+      return sector in all
+        ? Response.json(all[sector])
+        : Response.json({ error: 'Invalid sector' }, { status: 400 })
+    }
+    return Response.json(all)
   }
 
-  const cached = cache.get(sector)
-  if (cached && Date.now() - cached.ts < TTL_MS) {
-    return Response.json(cached.data)
-  }
-
-  const { etf, topStocks, description } = SECTORS[sector]
+  // Fetch all ETF quotes + news in parallel
   const today = new Date().toISOString().split('T')[0]
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const [quoteRes, newsRes] = await Promise.all([
-    fetch(`https://finnhub.io/api/v1/quote?symbol=${etf}&token=${FINNHUB_TOKEN}`),
-    fetch(`https://finnhub.io/api/v1/company-news?symbol=${etf}&from=${weekAgo}&to=${today}&token=${FINNHUB_TOKEN}`),
-  ])
+  const fetches = await Promise.all(
+    SECTORS.map(async (s) => {
+      const [quoteRes, newsRes] = await Promise.all([
+        fetch(`https://finnhub.io/api/v1/quote?symbol=${s.etf}&token=${FINNHUB_TOKEN}`),
+        fetch(`https://finnhub.io/api/v1/company-news?symbol=${s.etf}&from=${weekAgo}&to=${today}&token=${FINNHUB_TOKEN}`),
+      ])
+      const [quote, newsRaw] = await Promise.all([quoteRes.json(), newsRes.json()])
+      const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 2) : []
+      return { ...s, quote, news }
+    })
+  )
 
-  const [quote, newsRaw] = await Promise.all([quoteRes.json(), newsRes.json()])
-  const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 3) : []
+  // Build one prompt for all 7 sectors
+  const sectorBlocks = fetches.map(s =>
+    `${s.name} (${s.etf}): $${s.quote.c} (${s.quote.dp > 0 ? '+' : ''}${s.quote.dp?.toFixed(2)}% today)
+Headlines: ${s.news.map((n: { headline: string }) => n.headline).join(' | ') || 'None'}`
+  ).join('\n\n')
 
-  const prompt = `You are a sharp macro and sector analyst. Given this data on the ${description} sector (ETF: ${etf}), return a JSON object with exactly these four fields:
+  const prompt = `You are a sharp macro analyst. Given today's ETF data for 7 US equity sectors, return a single JSON object where each key is the sector key below, and each value has exactly these fields:
 
 {
-  "thesis": "Start with exactly one of: 🟢 Positive, 🔴 Negative, or 🟡 Neutral — then one sentence on the sector's current direction and key risk/opportunity.",
+  "thesis": "Start with 🟢 Positive, 🔴 Negative, or 🟡 Neutral — then one sentence on direction and key risk/opportunity.",
   "drivers": ["driver 1 — one sentence", "driver 2 — one sentence", "driver 3 — one sentence"],
-  "catalyst": "One sentence on the most important upcoming event or data point for this sector.",
-  "outlook": "One sentence on what would change the thesis — either direction."
+  "catalyst": "One sentence on the most important upcoming event for this sector.",
+  "outlook": "One sentence on what would change the thesis."
 }
 
+Sector keys: technology, healthcare, financials, energy, consumer-disc, industrials, comm-services
+
 Data:
-- ETF (${etf}): $${quote.c} (${quote.dp > 0 ? '+' : ''}${quote.dp?.toFixed(2)}% today)
-- Recent headlines: ${news.map((n: { headline: string }) => n.headline).join(' | ') || 'None available'}
+${sectorBlocks}
 
 Rules:
-- Be direct and specific. No filler phrases.
-- drivers must be an array of exactly 3 strings.
-- Return only valid JSON. No markdown code fences.`
+- Be direct. No filler phrases.
+- drivers must be exactly 3 strings per sector.
+- Return only valid JSON. No markdown code fences. No extra text.`
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 500,
+    max_tokens: 2000,
     messages: [{ role: 'user', content: prompt }],
   })
 
   const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
-  let parsed = { thesis: '', drivers: [] as string[], catalyst: '', outlook: '' }
-  try { parsed = JSON.parse(cleaned) } catch { parsed.thesis = cleaned }
 
-  const result = {
-    sector,
-    name: description,
-    etf,
-    price: quote.c,
-    change: quote.dp,
-    topStocks,
-    thesis: parsed.thesis,
-    drivers: parsed.drivers ?? [],
-    catalyst: parsed.catalyst,
-    outlook: parsed.outlook,
+  let parsed: Record<string, { thesis: string; drivers: string[]; catalyst: string; outlook: string }> = {}
+  try { parsed = JSON.parse(cleaned) } catch { /* fall through with empty */ }
+
+  // Build full result keyed by sector
+  const result: Record<string, unknown> = {}
+  for (const s of fetches) {
+    const ai = parsed[s.key] ?? { thesis: '', drivers: [], catalyst: '', outlook: '' }
+    result[s.key] = {
+      sector: s.key,
+      name: s.name,
+      etf: s.etf,
+      price: s.quote.c,
+      change: s.quote.dp,
+      topStocks: s.topStocks,
+      thesis: ai.thesis,
+      drivers: ai.drivers ?? [],
+      catalyst: ai.catalyst,
+      outlook: ai.outlook,
+    }
   }
 
-  cache.set(sector, { data: result, ts: Date.now() })
+  cache = { data: result, ts: Date.now() }
+
+  if (sector) {
+    return sector in result
+      ? Response.json(result[sector])
+      : Response.json({ error: 'Invalid sector' }, { status: 400 })
+  }
   return Response.json(result)
 }

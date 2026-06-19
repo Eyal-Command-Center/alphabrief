@@ -116,6 +116,7 @@ export default function CalendarPage() {
           <div className="flex items-center gap-3 md:gap-6">
             <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">My Stocks</Link>
             <Link href="/app/sectors" className="text-sm text-slate-300 hover:text-white transition-colors">Sectors</Link>
+            <Link href="/app/ipos" className="text-sm text-slate-300 hover:text-white transition-colors">IPOs</Link>
             <Link href="/app/calendar" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Calendar</Link>
           </div>
         </nav>

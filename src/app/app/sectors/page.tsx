@@ -61,14 +61,20 @@ export default function SectorsPage() {
   }, [])
 
   useEffect(() => {
-    SECTORS.forEach(async ({ key, name }) => {
-      const res = await fetch(`/api/sectors/detail?sector=${key}`)
-      const data = res.ok ? await res.json() : null
-      setCards(prev => prev.map(c => c.sector === key
-        ? { ...c, loading: false, data, error: !data }
-        : c
-      ))
-    })
+    fetch('/api/sectors/detail')
+      .then(r => r.ok ? r.json() : null)
+      .then(all => {
+        if (!all) {
+          setCards(prev => prev.map(c => ({ ...c, loading: false, error: true })))
+          return
+        }
+        setCards(prev => prev.map(c => ({
+          ...c,
+          loading: false,
+          data: all[c.sector] ?? null,
+          error: !all[c.sector],
+        })))
+      })
   }, [])
 
   const current = cards[activeIndex]
@@ -95,6 +101,7 @@ export default function SectorsPage() {
         <div className="flex items-center gap-4 md:gap-6">
           <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
           <Link href="/app/sectors" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Sectors</Link>
+          <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
           <Link href="/app/calendar" className="text-sm text-slate-500 hover:text-white transition-colors">Calendar</Link>
           {user ? (
             <>
