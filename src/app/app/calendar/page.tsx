@@ -106,10 +106,34 @@ export default function CalendarPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-slate-400 text-sm">
-          <Link href="/app" className="text-emerald-400 hover:underline">Sign in</Link> to view your earnings calendar.
-        </p>
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+        <nav className="border-b border-slate-800/60 px-4 md:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
+            <span className="text-white font-semibold text-lg tracking-tight">Alpha<span className="text-emerald-400">Brief</span></span>
+            <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5 hidden sm:inline">beta</span>
+          </div>
+          <div className="flex items-center gap-3 md:gap-6">
+            <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">My Stocks</Link>
+            <Link href="/app/calendar" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Calendar</Link>
+          </div>
+        </nav>
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="w-full max-w-sm text-center">
+            <div className="text-3xl mb-4">📅</div>
+            <h2 className="text-xl font-semibold text-white mb-2">Your earnings calendar</h2>
+            <p className="text-slate-400 text-sm mb-6">
+              Never miss an earnings date for a stock you own. Create a free account to track upcoming earnings and macro events for your portfolio.
+            </p>
+            <Link
+              href="/app"
+              className="inline-block bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-6 py-3 rounded-xl text-sm transition-all"
+            >
+              Get started free →
+            </Link>
+            <p className="text-slate-600 text-xs mt-4">Already have an account? <Link href="/app" className="text-emerald-400 hover:text-emerald-300">Sign in</Link></p>
+          </div>
+        </div>
       </div>
     )
   }

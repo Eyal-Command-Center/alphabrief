@@ -71,7 +71,6 @@ function StockCard({ card }: { card: CardState }) {
 
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
-
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -167,17 +166,18 @@ export default function MyStocksPage() {
   const [tickers, setTickers] = useState('')
   const [cards, setCards] = useState<CardState[]>([])
 
-  // Auth state
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [authSubmitting, setAuthSubmitting] = useState(false)
   const [authSuccess, setAuthSuccess] = useState('')
+  const [showAuthForm, setShowAuthForm] = useState(false)
 
   const [savedTickers, setSavedTickers] = useState<string[]>([])
+  const [hasGenerated, setHasGenerated] = useState(false)
 
   const supabase = createClient()
 
@@ -202,7 +202,6 @@ export default function MyStocksPage() {
       .then(({ data }) => {
         if (data?.tickers?.length) {
           setSavedTickers(data.tickers)
-          // Don't auto-populate input — chips are off by default, user toggles them in
         }
       })
   }, [user])
@@ -238,27 +237,19 @@ export default function MyStocksPage() {
     return res.json()
   }
 
-  // Chip click — load single card, replace current view
-  async function loadSingleStock(symbol: string) {
-    setCards([{ symbol, loading: true, data: null, error: false }])
-    const data = await loadCard(symbol)
-    setCards([{ symbol, loading: false, data, error: !data }])
-  }
-
-  // Generate — load all tickers as progressive feed
   async function generateAll() {
     const tickerList = tickers.toUpperCase().split(',').map(t => t.trim()).filter(Boolean)
     if (!tickerList.length) return
 
-    // Save tickers (merge with existing)
-    const merged = Array.from(new Set([...savedTickers, ...tickerList]))
-    setSavedTickers(merged)
-    await persistTickers(merged)
+    if (user) {
+      const merged = Array.from(new Set([...savedTickers, ...tickerList]))
+      setSavedTickers(merged)
+      await persistTickers(merged)
+    }
 
-    // Set all cards to loading state
+    setHasGenerated(true)
     setCards(tickerList.map(symbol => ({ symbol, loading: true, data: null, error: false })))
 
-    // Fetch all in parallel — as each resolves, move it to the top
     tickerList.forEach(async (symbol) => {
       const data = await loadCard(symbol)
       setCards(prev => [
@@ -289,103 +280,16 @@ export default function MyStocksPage() {
     setCards([])
     setTickers('')
     setSavedTickers([])
+    setHasGenerated(false)
   }
 
   const isLoading = cards.some(c => c.loading)
+  const allLoaded = hasGenerated && !isLoading
 
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-        <nav className="border-b border-slate-800/60 px-4 md:px-8 py-4 flex items-center gap-2">
-          <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
-          <span className="text-white font-semibold text-lg tracking-tight">
-            Alpha<span className="text-emerald-400">Brief</span>
-          </span>
-          <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5">beta</span>
-        </nav>
-
-        <div className="flex-1 flex items-center justify-center px-6">
-          <div className="w-full max-w-sm">
-            <h2 className="text-2xl font-semibold text-white mb-2 text-center">
-              {authMode === 'login' ? 'Welcome back' : 'Create your account'}
-            </h2>
-            <p className="text-slate-400 text-sm text-center mb-8">
-              {authMode === 'login' ? 'Sign in to access your stocks.' : 'Free during beta.'}
-            </p>
-
-            <button
-              onClick={() => supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                  redirectTo: process.env.NODE_ENV === 'production'
-                    ? 'https://alphabrief.io/auth/callback'
-                    : `${window.location.origin}/auth/callback`
-                }
-              })}
-              className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3.5 rounded-xl transition-all text-sm mb-4"
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-                <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-px bg-slate-800" />
-              <span className="text-slate-600 text-xs">or</span>
-              <div className="flex-1 h-px bg-slate-800" />
-            </div>
-
-            <form onSubmit={handleAuth} className="space-y-3">
-              <input
-                type="email"
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
-              />
-              <input
-                type="password"
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                placeholder="Password"
-                required
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
-              />
-              {authError && <p className="text-red-400 text-xs">{authError}</p>}
-              {authSuccess && <p className="text-emerald-400 text-xs">{authSuccess}</p>}
-              <button
-                type="submit"
-                disabled={authSubmitting}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-700 text-slate-950 font-semibold py-3.5 rounded-xl transition-all text-sm"
-              >
-                {authSubmitting ? 'Please wait...' : authMode === 'login' ? 'Sign in' : 'Create account'}
-              </button>
-            </form>
-
-            <p className="text-center text-slate-500 text-xs mt-6">
-              {authMode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthSuccess('') }}
-                className="text-emerald-400 hover:text-emerald-300"
-              >
-                {authMode === 'login' ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
-          </div>
-        </div>
       </div>
     )
   }
@@ -405,10 +309,19 @@ export default function MyStocksPage() {
         <div className="flex items-center gap-3 md:gap-6">
           <Link href="/app" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">My Stocks</Link>
           <Link href="/app/calendar" className="text-sm text-slate-300 hover:text-white transition-colors">Calendar</Link>
-          <span className="text-slate-400 text-xs hidden md:inline">{user.email}</span>
-          <button onClick={signOut} className="text-xs text-slate-300 hover:text-white transition-colors">
-            Sign out
-          </button>
+          {user ? (
+            <>
+              <span className="text-slate-400 text-xs hidden md:inline">{user.email}</span>
+              <button onClick={signOut} className="text-xs text-slate-300 hover:text-white transition-colors">Sign out</button>
+            </>
+          ) : (
+            <button
+              onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
+              className="text-xs text-slate-300 hover:text-white transition-colors"
+            >
+              Sign in
+            </button>
+          )}
         </div>
       </nav>
 
@@ -422,7 +335,7 @@ export default function MyStocksPage() {
               <span className="text-emerald-400">at a glance.</span>
             </h2>
             <p className="text-slate-300 text-base">
-              Add tickers below and get a full snapshot for each — price, thesis, catalyst, and news.
+              Add tickers below and get a full snapshot — price, thesis, catalyst, and news.
             </p>
           </div>
         )}
@@ -467,8 +380,8 @@ export default function MyStocksPage() {
             </div>
           )}
 
-          {/* Saved ticker chips */}
-          {savedTickers.length > 0 && (
+          {/* Saved ticker chips — only for logged-in users */}
+          {user && savedTickers.length > 0 && (
             <div className="mt-4">
               <p className="text-xs text-slate-400 mb-2 uppercase tracking-widest font-semibold">Saved stocks</p>
               <div className="flex flex-wrap gap-2">
@@ -504,9 +417,8 @@ export default function MyStocksPage() {
         {/* Cards feed */}
         {cards.length > 0 && (
           <div className="w-full max-w-2xl mt-10 space-y-6">
-            {/* Back / clear */}
             <button
-              onClick={() => setCards([])}
+              onClick={() => { setCards([]); setHasGenerated(false) }}
               className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group"
             >
               <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
@@ -516,6 +428,106 @@ export default function MyStocksPage() {
             {cards.map((card) => (
               <StockCard key={card.symbol} card={card} />
             ))}
+
+            {/* Sign-up prompt — shown to unauthenticated users after all cards load */}
+            {!user && allLoaded && !showAuthForm && (
+              <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 text-center">
+                <p className="text-white font-semibold mb-1">Save your stocks and come back tomorrow</p>
+                <p className="text-slate-400 text-sm mb-5">
+                  Create a free account to save your list, track your portfolio, and access your earnings calendar — all in one place.
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-6 py-2.5 rounded-xl text-sm transition-all"
+                  >
+                    Sign up free →
+                  </button>
+                  <button
+                    onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
+                    className="text-slate-400 hover:text-white text-sm transition-colors"
+                  >
+                    Already have an account
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Inline auth form */}
+            {!user && showAuthForm && (
+              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
+                <h3 className="text-white font-semibold text-lg mb-1 text-center">
+                  {authMode === 'signup' ? 'Create your free account' : 'Welcome back'}
+                </h3>
+                <p className="text-slate-400 text-sm text-center mb-6">
+                  {authMode === 'signup' ? 'Free during beta.' : 'Sign in to access your saved stocks.'}
+                </p>
+
+                <button
+                  onClick={() => supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: process.env.NODE_ENV === 'production'
+                        ? 'https://alphabrief.io/auth/callback'
+                        : `${window.location.origin}/auth/callback`
+                    }
+                  })}
+                  className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3 rounded-xl transition-all text-sm mb-4"
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                    <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </button>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex-1 h-px bg-slate-800" />
+                  <span className="text-slate-600 text-xs">or</span>
+                  <div className="flex-1 h-px bg-slate-800" />
+                </div>
+
+                <form onSubmit={handleAuth} className="space-y-3">
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    required
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+                  />
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="Password"
+                    required
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-sm transition-colors"
+                  />
+                  {authError && <p className="text-red-400 text-xs">{authError}</p>}
+                  {authSuccess && <p className="text-emerald-400 text-xs">{authSuccess}</p>}
+                  <button
+                    type="submit"
+                    disabled={authSubmitting}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-700 text-slate-950 font-semibold py-3 rounded-xl transition-all text-sm"
+                  >
+                    {authSubmitting ? 'Please wait...' : authMode === 'signup' ? 'Create account' : 'Sign in'}
+                  </button>
+                </form>
+
+                <p className="text-center text-slate-500 text-xs mt-4">
+                  {authMode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}
+                  <button
+                    onClick={() => { setAuthMode(authMode === 'signup' ? 'login' : 'signup'); setAuthError(''); setAuthSuccess('') }}
+                    className="text-emerald-400 hover:text-emerald-300"
+                  >
+                    {authMode === 'signup' ? 'Sign in' : 'Sign up'}
+                  </button>
+                </p>
+              </div>
+            )}
           </div>
         )}
       </main>
