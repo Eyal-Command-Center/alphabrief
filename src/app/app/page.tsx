@@ -206,6 +206,21 @@ export default function MyStocksPage() {
       })
   }, [user])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const t = params.get('t')
+    if (!t) return
+    const symbol = t.toUpperCase()
+    setTickers(symbol)
+    setHasGenerated(true)
+    setCards([{ symbol, loading: true, data: null, error: false }])
+    fetch(`/api/screener/detail?symbol=${symbol}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        setCards([{ symbol, loading: false, data, error: !data }])
+      })
+  }, [])
+
   async function persistTickers(list: string[]) {
     if (!user) return
     await supabase.from('portfolios').upsert(
