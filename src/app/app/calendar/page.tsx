@@ -98,26 +98,27 @@ export default function CalendarPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-white/8 border-t-emerald-500 rounded-full animate-spin" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-        <nav className="border-b border-slate-800/60 px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <div className="min-h-screen bg-black text-white flex flex-col">
+        <nav className="border-b border-white/5 px-4 md:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
             <span className="text-white font-semibold text-lg tracking-tight">Alpha<span className="text-emerald-400">Brief</span></span>
-            <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5 hidden sm:inline">beta</span>
+            <span className="ml-1 text-xs text-slate-600 border border-white/8 rounded px-2 py-0.5 hidden sm:inline">beta</span>
           </div>
-          <div className="flex items-center gap-3 md:gap-6">
-            <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">My Stocks</Link>
-            <Link href="/app/sectors" className="text-sm text-slate-300 hover:text-white transition-colors">Sectors</Link>
-            <Link href="/app/ipos" className="text-sm text-slate-300 hover:text-white transition-colors">IPOs</Link>
+          <div className="flex items-center gap-4 md:gap-6">
+            <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
+            <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
+            <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
             <Link href="/app/calendar" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Calendar</Link>
+            <Link href="/app/settings" className="text-sm text-slate-500 hover:text-white transition-colors">Settings</Link>
           </div>
         </nav>
         <div className="flex-1 flex items-center justify-center px-6">
@@ -141,21 +142,24 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen bg-black text-white flex flex-col">
 
       {/* Nav */}
-      <nav className="border-b border-slate-800/60 px-4 md:px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <nav className="border-b border-white/5 px-4 md:px-8 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
           <span className="text-white font-semibold text-lg tracking-tight">
             Alpha<span className="text-emerald-400">Brief</span>
           </span>
-          <span className="ml-2 text-xs text-slate-400 border border-slate-600 rounded px-2 py-0.5 hidden sm:inline">beta</span>
+          <span className="ml-1 text-xs text-slate-600 border border-white/8 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
-        <div className="flex items-center gap-3 md:gap-6">
-          <Link href="/app" className="text-sm text-slate-300 hover:text-white transition-colors">My Stocks</Link>
+        <div className="flex items-center gap-4 md:gap-6">
+          <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
+          <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
+          <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
           <Link href="/app/calendar" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Calendar</Link>
-          <span className="text-slate-400 text-xs hidden md:inline">{user.email}</span>
+          <Link href="/app/settings" className="text-sm text-slate-500 hover:text-white transition-colors">Settings</Link>
+          <span className="text-slate-600 text-xs hidden md:inline">{user.email}</span>
         </div>
       </nav>
 
@@ -167,20 +171,20 @@ export default function CalendarPage() {
 
         {loading && (
           <div className="flex items-center gap-3 text-slate-400 text-sm">
-            <div className="w-4 h-4 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-white/8 border-t-emerald-500 rounded-full animate-spin" />
             Loading earnings...
           </div>
         )}
 
         {noTickers && !loading && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
+          <div className="bg-slate-900 border border-white/8 rounded-2xl p-8 text-center">
             <p className="text-slate-400 text-sm mb-3">No tickers saved yet.</p>
             <Link href="/app" className="text-emerald-400 text-sm hover:underline">Go to Brief → add your tickers</Link>
           </div>
         )}
 
         {!loading && !noTickers && events.length === 0 && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
+          <div className="bg-slate-900 border border-white/8 rounded-2xl p-8 text-center">
             <p className="text-slate-400 text-sm">No upcoming earnings found for your tickers in the next 60 days.</p>
           </div>
         )}
@@ -190,7 +194,7 @@ export default function CalendarPage() {
             {events.map((event, i) => (
               <div
                 key={`${event.symbol}-${i}`}
-                className="bg-slate-900 border border-slate-700 rounded-2xl px-6 py-5 flex items-center justify-between"
+                className="bg-slate-900 border border-white/8 rounded-2xl px-6 py-5 flex items-center justify-between"
               >
                 <div className="flex items-center gap-5">
                   <div className="min-w-[64px]">
@@ -238,7 +242,7 @@ export default function CalendarPage() {
               {macroEvents.map((event, i) => (
                 <div
                   key={i}
-                  className="bg-slate-900 border border-slate-700 rounded-2xl px-6 py-5 flex items-center justify-between"
+                  className="bg-slate-900 border border-white/8 rounded-2xl px-6 py-5 flex items-center justify-between"
                 >
                   <div>
                     <p className="text-white text-sm font-semibold">{event.event}</p>
