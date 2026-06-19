@@ -35,6 +35,12 @@ function formatShares(val: number | null) {
   return `${val} shares`
 }
 
+function formatMarketCap(val: number | null) {
+  if (!val) return null
+  if (val >= 1000) return `$${(val / 1000).toFixed(1)}B`
+  return `$${val.toFixed(0)}M`
+}
+
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + 'T12:00:00')
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -49,14 +55,17 @@ function daysUntil(dateStr: string) {
   return `In ${diff} days`
 }
 
-function formatMarketCap(val: number | null) {
-  if (!val) return null
-  // Finnhub returns market cap in millions
-  if (val >= 1000) return `$${(val / 1000).toFixed(1)}B`
-  return `$${val.toFixed(0)}M`
-}
-
-function IpoRow({ ipo, onSymbolClick }: { ipo: IpoEntry; onSymbolClick: (s: string) => void }) {
+function IpoRow({
+  ipo,
+  saved,
+  onSymbolClick,
+  onSave,
+}: {
+  ipo: IpoEntry
+  saved: boolean
+  onSymbolClick: (s: string) => void
+  onSave: (symbol: string) => void
+}) {
   const hasCurrentPrice = ipo.currentPrice !== null
   const priceUp = (ipo.priceChange ?? 0) >= 0
 
@@ -94,8 +103,9 @@ function IpoRow({ ipo, onSymbolClick }: { ipo: IpoEntry; onSymbolClick: (s: stri
         </div>
       </div>
 
-      {/* Right: current price or countdown */}
-      <div className="shrink-0 text-right">
+      {/* Right: price + save */}
+      <div className="shrink-0 flex flex-col items-end gap-2">
+        {/* Price block */}
         {hasCurrentPrice ? (
           <div className="flex flex-col items-end gap-1">
             <span className="text-white font-semibold text-sm">${ipo.currentPrice!.toFixed(2)}</span>
@@ -116,6 +126,20 @@ function IpoRow({ ipo, onSymbolClick }: { ipo: IpoEntry; onSymbolClick: (s: stri
             {daysUntil(ipo.date)}
           </span>
         )}
+
+        {/* Save button */}
+        {ipo.symbol && (
+          saved ? (
+            <span className="text-xs text-emerald-500 font-medium">✓ Saved</span>
+          ) : (
+            <button
+              onClick={() => onSave(ipo.symbol!)}
+              className="text-xs text-slate-500 hover:text-emerald-400 transition-colors border border-white/8 hover:border-emerald-500/30 px-2 py-0.5 rounded"
+            >
+              + My Stocks
+            </button>
+          )
+        )}
       </div>
     </div>
   )
@@ -126,6 +150,8 @@ export default function IposPage() {
   const [upcoming, setUpcoming] = useState<IpoEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
+  const [savedTickers, setSavedTickers] = useState<Set<string>>(new Set())
+  const [toast, setToast] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -142,6 +168,37 @@ export default function IposPage() {
         setLoading(false)
       })
   }, [])
+
+  // Load existing saved tickers so we can show "Saved" state
+  useEffect(() => {
+    if (!user) return
+    supabase.from('portfolios').select('tickers').eq('user_id', user.id).single()
+      .then(({ data }) => {
+        if (data?.tickers) setSavedTickers(new Set(data.tickers))
+      })
+  }, [user])
+
+  async function handleSave(symbol: string) {
+    if (!user) {
+      // Not logged in — navigate to app to trigger upsell
+      router.push(`/app?t=${symbol}`)
+      return
+    }
+    // Optimistic update
+    setSavedTickers(prev => new Set([...prev, symbol]))
+    showToast(`${symbol} added to My Stocks`)
+
+    // Persist
+    const { data } = await supabase.from('portfolios').select('tickers').eq('user_id', user.id).single()
+    const existing: string[] = data?.tickers ?? []
+    const merged = Array.from(new Set([...existing, symbol]))
+    await supabase.from('portfolios').upsert({ user_id: user.id, tickers: merged })
+  }
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2500)
+  }
 
   function handleSymbolClick(symbol: string) {
     router.push(`/app?t=${symbol}`)
@@ -183,7 +240,7 @@ export default function IposPage() {
 
         <div className="mb-8">
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">IPO Tracker</h2>
-          <p className="text-slate-500 text-sm">Recent pricings and upcoming IPOs. Click a ticker to pull the full stock card.</p>
+          <p className="text-slate-500 text-sm">Recent pricings and upcoming IPOs. Save any ticker directly to your watchlist.</p>
         </div>
 
         {loading ? (
@@ -207,7 +264,13 @@ export default function IposPage() {
               ) : (
                 <div className="bg-slate-900 border border-white/8 rounded-2xl overflow-hidden">
                   {upcoming.map((ipo, i) => (
-                    <IpoRow key={i} ipo={ipo} onSymbolClick={handleSymbolClick} />
+                    <IpoRow
+                      key={i}
+                      ipo={ipo}
+                      saved={savedTickers.has(ipo.symbol ?? '')}
+                      onSymbolClick={handleSymbolClick}
+                      onSave={handleSave}
+                    />
                   ))}
                 </div>
               )}
@@ -226,7 +289,13 @@ export default function IposPage() {
               ) : (
                 <div className="bg-slate-900 border border-white/8 rounded-2xl overflow-hidden">
                   {recent.map((ipo, i) => (
-                    <IpoRow key={i} ipo={ipo} onSymbolClick={handleSymbolClick} />
+                    <IpoRow
+                      key={i}
+                      ipo={ipo}
+                      saved={savedTickers.has(ipo.symbol ?? '')}
+                      onSymbolClick={handleSymbolClick}
+                      onSave={handleSave}
+                    />
                   ))}
                 </div>
               )}
@@ -235,6 +304,13 @@ export default function IposPage() {
           </div>
         )}
       </main>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-emerald-500/30 text-emerald-400 text-sm font-medium px-5 py-3 rounded-2xl shadow-xl z-50 animate-fade-in">
+          ✓ {toast}
+        </div>
+      )}
     </div>
   )
 }

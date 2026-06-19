@@ -50,12 +50,12 @@ export async function GET() {
   const recentList: IpoRaw[] = (recentRaw?.ipoCalendar ?? [])
     .filter((e: IpoRaw) => e.status === 'priced')
     .sort((a: IpoRaw, b: IpoRaw) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 20)
+    .slice(0, 15) // cap to limit enrichment API calls
 
   const upcomingList: IpoRaw[] = (upcomingRaw?.ipoCalendar ?? [])
     .filter((e: IpoRaw) => e.status !== 'priced')
     .sort((a: IpoRaw, b: IpoRaw) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 20)
+    .slice(0, 10) // cap to limit enrichment API calls
 
   // Enrich all entries that have a symbol
   interface EnrichmentData {
@@ -84,7 +84,7 @@ export async function GET() {
             symbol,
             currentPrice: quote.c > 0 ? quote.c : null,
             priceChange: typeof quote.dp === 'number' ? quote.dp : null,
-            sector: profile.finnhubIndustry || null,
+            sector: (profile.finnhubIndustry && profile.finnhubIndustry !== 'N/A') ? profile.finnhubIndustry : null,
             marketCap: profile.marketCapitalization > 0 ? profile.marketCapitalization : null,
           } as EnrichmentData
         } catch {
