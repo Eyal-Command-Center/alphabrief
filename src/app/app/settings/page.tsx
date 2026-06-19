@@ -8,6 +8,13 @@ import type { User } from '@supabase/supabase-js'
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authSuccess, setAuthSuccess] = useState('')
+  const [showAuthForm, setShowAuthForm] = useState(false)
 
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [frequency, setFrequency] = useState<'daily' | 'weekly'>('weekly')
@@ -60,14 +67,91 @@ export default function SettingsPage() {
     )
   }
 
+  async function handleAuth(e: React.FormEvent) {
+    e.preventDefault()
+    setAuthSubmitting(true)
+    setAuthError('')
+    setAuthSuccess('')
+    if (authMode === 'signup') {
+      const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword })
+      if (error) setAuthError(error.message)
+      else setAuthSuccess('Check your email to confirm your account.')
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword })
+      if (error) setAuthError(error.message)
+      else {
+        const { data } = await supabase.auth.getUser()
+        setUser(data.user)
+      }
+    }
+    setAuthSubmitting(false)
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col">
         <Nav user={null} onSignOut={signOut} />
         <div className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center">
-            <p className="text-slate-400 text-sm mb-4">Sign in to manage your settings.</p>
-            <Link href="/app" className="text-emerald-400 text-sm hover:underline">Sign in →</Link>
+          <div className="w-full max-w-sm">
+            {!showAuthForm ? (
+              <>
+                <h2 className="text-xl font-semibold text-white mb-1">Settings</h2>
+                <p className="text-slate-500 text-sm mb-6">
+                  Manage your email reports — get your saved stocks delivered daily or weekly, straight to your inbox.
+                </p>
+                <button
+                  onClick={() => setShowAuthForm(true)}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-6 py-3 rounded-xl text-sm transition-all"
+                >
+                  Sign in to manage settings
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold text-white mb-1">
+                  {authMode === 'login' ? 'Welcome back' : 'Create your free account'}
+                </h2>
+                <p className="text-slate-500 text-sm mb-6">
+                  {authMode === 'login' ? 'Sign in to manage your settings.' : 'Free during beta.'}
+                </p>
+                <form onSubmit={handleAuth} className="space-y-3">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={authEmail}
+                    onChange={e => setAuthEmail(e.target.value)}
+                    required
+                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={authPassword}
+                    onChange={e => setAuthPassword(e.target.value)}
+                    required
+                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+                  />
+                  {authError && <p className="text-red-400 text-xs">{authError}</p>}
+                  {authSuccess && <p className="text-emerald-400 text-xs">{authSuccess}</p>}
+                  <button
+                    type="submit"
+                    disabled={authSubmitting}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold py-3 rounded-xl text-sm transition-all"
+                  >
+                    {authSubmitting ? 'Please wait…' : authMode === 'login' ? 'Sign in' : 'Create account'}
+                  </button>
+                </form>
+                <p className="text-slate-500 text-xs mt-4 text-center">
+                  {authMode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                  <button
+                    onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthSuccess('') }}
+                    className="text-emerald-400 hover:underline"
+                  >
+                    {authMode === 'login' ? 'Sign up' : 'Sign in'}
+                  </button>
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
