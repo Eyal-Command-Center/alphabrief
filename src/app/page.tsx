@@ -3,9 +3,11 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { AuthModal } from '@/components/AuthModal'
 
 export default function LandingPage() {
   const [ticker, setTicker] = useState('')
+  const [showAuth, setShowAuth] = useState(false)
   const [suggestions, setSuggestions] = useState<{ symbol: string; name: string }[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const router = useRouter()
@@ -52,9 +54,12 @@ export default function LandingPage() {
           </span>
           <span className="ml-1 text-xs text-slate-600 border border-slate-800 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
-        <Link href="/app" className="text-sm text-slate-400 hover:text-white transition-colors">
-          Sign in →
-        </Link>
+        <button
+          onClick={() => setShowAuth(true)}
+          className="text-sm text-slate-400 hover:text-white transition-colors"
+        >
+          Sign in
+        </button>
       </nav>
 
       {/* Hero */}
@@ -221,6 +226,12 @@ export default function LandingPage() {
         <span className="text-slate-700 text-xs">alphabrief.io</span>
       </footer>
 
+      {showAuth && (
+        <AuthModal
+          onSuccess={() => { setShowAuth(false); window.location.href = '/app' }}
+          onClose={() => setShowAuth(false)}
+        />
+      )}
     </div>
   )
 }

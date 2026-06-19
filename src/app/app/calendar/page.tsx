@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { AuthModal } from '@/components/AuthModal'
 
 interface EarningsEvent {
   symbol: string
@@ -22,6 +23,7 @@ interface MacroEvent {
 export default function CalendarPage() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [showAuth, setShowAuth] = useState(false)
   const [events, setEvents] = useState<EarningsEvent[]>([])
   const [macroEvents, setMacroEvents] = useState<MacroEvent[]>([])
   const [loading, setLoading] = useState(false)
@@ -126,17 +128,22 @@ export default function CalendarPage() {
             <div className="text-3xl mb-4">📅</div>
             <h2 className="text-xl font-semibold text-white mb-2">Your earnings calendar</h2>
             <p className="text-slate-400 text-sm mb-6">
-              Never miss an earnings date for a stock you own. Create a free account to track upcoming earnings and macro events for your portfolio.
+              Never miss an earnings date for a stock you own. Sign in to track upcoming earnings and macro events for your portfolio.
             </p>
-            <Link
-              href="/app"
-              className="inline-block bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-6 py-3 rounded-xl text-sm transition-all"
+            <button
+              onClick={() => setShowAuth(true)}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-6 py-3 rounded-xl text-sm transition-all"
             >
               Get started free →
-            </Link>
-            <p className="text-slate-600 text-xs mt-4">Already have an account? <Link href="/app" className="text-emerald-400 hover:text-emerald-300">Sign in</Link></p>
+            </button>
           </div>
         </div>
+        {showAuth && (
+          <AuthModal
+            onSuccess={u => { setUser(u); setShowAuth(false) }}
+            onClose={() => setShowAuth(false)}
+          />
+        )}
       </div>
     )
   }

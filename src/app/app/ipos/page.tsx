@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { AuthModal } from '@/components/AuthModal'
 
 interface IpoEntry {
   date: string
@@ -152,6 +153,7 @@ export default function IposPage() {
   const [user, setUser] = useState<User | null>(null)
   const [savedTickers, setSavedTickers] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
+  const [showAuth, setShowAuth] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -232,7 +234,7 @@ export default function IposPage() {
               <button onClick={signOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
             </>
           ) : (
-            <Link href="/app" className="text-xs text-slate-400 hover:text-white transition-colors">Sign in</Link>
+            <button onClick={() => setShowAuth(true)} className="text-xs text-slate-400 hover:text-white transition-colors">Sign in</button>
           )}
         </div>
       </nav>
@@ -305,6 +307,13 @@ export default function IposPage() {
           </div>
         )}
       </main>
+
+      {showAuth && (
+        <AuthModal
+          onSuccess={u => { setUser(u); setShowAuth(false) }}
+          onClose={() => setShowAuth(false)}
+        />
+      )}
 
       {/* Toast */}
       {toast && (

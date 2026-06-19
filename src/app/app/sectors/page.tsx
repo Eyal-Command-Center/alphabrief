@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { AuthModal } from '@/components/AuthModal'
 
 interface SectorData {
   sector: string
@@ -53,6 +54,7 @@ export default function SectorsPage() {
   )
   const [activeIndex, setActiveIndex] = useState(0)
   const [user, setUser] = useState<User | null>(null)
+  const [showAuth, setShowAuth] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -110,7 +112,7 @@ export default function SectorsPage() {
               <button onClick={signOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
             </>
           ) : (
-            <Link href="/app" className="text-xs text-slate-400 hover:text-white transition-colors">Sign in</Link>
+            <button onClick={() => setShowAuth(true)} className="text-xs text-slate-400 hover:text-white transition-colors">Sign in</button>
           )}
         </div>
       </nav>
@@ -295,6 +297,13 @@ export default function SectorsPage() {
           </div>
         </div>
       </main>
+
+      {showAuth && (
+        <AuthModal
+          onSuccess={u => { setUser(u); setShowAuth(false) }}
+          onClose={() => setShowAuth(false)}
+        />
+      )}
     </div>
   )
 }
