@@ -10,11 +10,14 @@ export async function GET(req: Request) {
   )
   const data = await res.json()
 
+  const validTicker = /^[A-Z]{1,5}$/
   const results = (data.result ?? [])
-    .filter((r: { type: string }) => r.type === 'Common Stock')
+    .filter((r: { type: string; displaySymbol: string }) =>
+      r.type === 'Common Stock' && validTicker.test(r.displaySymbol)
+    )
     .slice(0, 6)
     .map((r: { symbol: string; description: string; displaySymbol: string }) => ({
-      symbol: r.displaySymbol || r.symbol,
+      symbol: r.displaySymbol,
       name: r.description,
     }))
 

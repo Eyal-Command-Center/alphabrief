@@ -253,6 +253,42 @@ export default function MyStocksPage() {
       })
   }, [user])
 
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function handleTickerInput(value: string) {
+    setTickers(value)
+    // Get the last ticker being typed (after last comma)
+    const parts = value.split(',')
+    const lastPart = parts[parts.length - 1].trim()
+    if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    if (lastPart.length < 1) { setSuggestions([]); setShowSuggestions(false); return }
+    searchDebounce.current = setTimeout(async () => {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(lastPart)}`)
+      const data = await res.json()
+      setSuggestions(data.results ?? [])
+      setShowSuggestions(data.results?.length > 0)
+    }, 300)
+  }
+
+  function selectSuggestion(symbol: string, name: string) {
+    // Replace the last partial ticker with the selected symbol
+    const parts = tickers.split(',')
+    parts[parts.length - 1] = ' ' + symbol
+    setTickers(parts.join(',').replace(/^,\s*/, '').trim())
+    setTickerNames(prev => ({ ...prev, [symbol]: name }))
+    setSuggestions([])
+    setShowSuggestions(false)
+  }
+
   async function persistTickers(list: string[]) {
     if (!user) return
     await supabase.from('portfolios').upsert(
@@ -276,6 +312,17 @@ export default function MyStocksPage() {
     const isActive = current.includes(ticker)
     const updated = isActive ? current.filter(t => t !== ticker) : [...current, ticker]
     setTickers(updated.join(', '))
+  }
+
+  async function resolveSymbol(input: string): Promise<{ symbol: string; name?: string } | null> {
+    const validTicker = /^[A-Z]{1,5}$/
+    if (validTicker.test(input)) return { symbol: input }
+    // Looks like a company name — search for it
+    const res = await fetch(`/api/search?q=${encodeURIComponent(input)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const first = data.results?.[0]
+    return first ? { symbol: first.symbol, name: first.name } : null
   }
 
   async function loadCard(symbol: string): Promise<StockDetail | null> {
@@ -302,13 +349,19 @@ export default function MyStocksPage() {
     }
 
     setHasGenerated(true)
-    setCards(tickerList.map(symbol => ({ symbol, loading: true, data: null, error: false })))
+    setCards(tickerList.map(input => ({ symbol: input, loading: true, data: null, error: false })))
 
-    tickerList.forEach(async (symbol) => {
+    tickerList.forEach(async (input) => {
+      const resolved = await resolveSymbol(input)
+      const symbol = resolved?.symbol ?? input.toUpperCase()
+      if (resolved?.name) setTickerNames(prev => ({ ...prev, [symbol]: resolved.name! }))
+      // If resolved to a different symbol, update the card key
+      setCards(prev => prev.map(c => c.symbol === input ? { ...c, symbol } : c))
       const data = await loadCard(symbol)
+      if (data?.name) setTickerNames(prev => ({ ...prev, [symbol]: data.name }))
       setCards(prev => [
         { symbol, loading: false, data, error: !data },
-        ...prev.filter(c => c.symbol !== symbol),
+        ...prev.filter(c => c.symbol !== symbol && c.symbol !== input),
       ])
     })
   }
@@ -397,18 +450,45 @@ export default function MyStocksPage() {
 
           {/* Search bar — hidden when cards are showing */}
           {!hasCards && (
-            <div className="mb-4">
+            <div className="mb-4" ref={searchRef}>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={tickers}
-                  onChange={(e) => setTickers(e.target.value)}
-                  placeholder="e.g. AAPL, NVDA, TSLA"
-                  className="flex-1 bg-slate-900 border border-white/8 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/60 text-sm transition-colors"
-                  onKeyDown={(e) => e.key === 'Enter' && generateAll()}
-                />
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={tickers}
+                    onChange={(e) => handleTickerInput(e.target.value)}
+                    placeholder="Ticker or company name, e.g. AAPL, Apple..."
+                    className="w-full bg-slate-900 border border-white/8 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/60 text-sm transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (showSuggestions && suggestions.length > 0) {
+                          selectSuggestion(suggestions[0].symbol, suggestions[0].name)
+                        } else {
+                          setShowSuggestions(false)
+                          generateAll()
+                        }
+                      }
+                      if (e.key === 'Escape') setShowSuggestions(false)
+                    }}
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl">
+                      {suggestions.map((s) => (
+                        <button
+                          key={s.symbol}
+                          onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s.symbol, s.name) }}
+                          className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-800 transition-colors text-left"
+                        >
+                          <span className="text-emerald-400 font-semibold text-sm">{s.symbol}</span>
+                          <span className="text-slate-400 text-xs ml-3 truncate">{s.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button
-                  onClick={generateAll}
+                  onClick={() => { setShowSuggestions(false); generateAll() }}
                   disabled={isLoading || !tickers.trim()}
                   className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-900 disabled:text-slate-700 disabled:border disabled:border-white/5 text-black font-semibold px-5 py-3 rounded-xl transition-all text-sm whitespace-nowrap"
                 >
@@ -441,6 +521,9 @@ export default function MyStocksPage() {
                         }`}
                       >
                         {ticker}
+                        {tickerNames[ticker] && (
+                          <span className="ml-1.5 font-normal opacity-60">{tickerNames[ticker]}</span>
+                        )}
                       </button>
                       <button
                         onClick={() => removeSavedTicker(ticker)}
