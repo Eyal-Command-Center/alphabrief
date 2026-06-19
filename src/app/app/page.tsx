@@ -427,6 +427,7 @@ export default function MyStocksPage() {
           <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
           <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
           <Link href="/app/calendar" className="text-sm text-slate-500 hover:text-white transition-colors">Calendar</Link>
+          <Link href="/app/settings" className="text-sm text-slate-500 hover:text-white transition-colors">Settings</Link>
           {user ? (
             <>
               <span className="text-slate-600 text-xs hidden md:inline">{user.email}</span>
