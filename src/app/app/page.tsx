@@ -28,6 +28,7 @@ interface CardState {
   loading: boolean
   data: StockDetail | null
   error: boolean
+  originalQuery?: string
 }
 
 function formatMarketCap(mc: number | null) {
@@ -57,10 +58,17 @@ function StockCard({ card }: { card: CardState }) {
   }
 
   if (card.error || !card.data) {
+    const query = card.originalQuery && card.originalQuery !== card.symbol ? card.originalQuery : null
     return (
-      <div className="bg-slate-900 border border-white/8 rounded-2xl p-6">
-        <p className="text-slate-400 text-sm">
-          Couldn&apos;t find <span className="text-white font-semibold">{card.symbol}</span> — double-check the ticker and try again.
+      <div className="bg-slate-900 border border-white/8 rounded-2xl p-5">
+        <p className="text-white font-semibold text-sm mb-1">
+          No results for &ldquo;{query ?? card.symbol}&rdquo;
+        </p>
+        <p className="text-slate-500 text-sm">
+          {query
+            ? <>Searched for <span className="text-slate-300">{card.symbol}</span> but couldn&apos;t get data. Try the exact ticker — e.g. <span className="text-emerald-400">GOOGL</span> instead of &ldquo;Google&rdquo;.</>
+            : <>Double-check the ticker symbol — e.g. <span className="text-emerald-400">AAPL</span>, <span className="text-emerald-400">NVDA</span>, <span className="text-emerald-400">TSLA</span>. Or type the company name and pick from the suggestions that appear.</>
+          }
         </p>
       </div>
     )
@@ -349,18 +357,17 @@ export default function MyStocksPage() {
     }
 
     setHasGenerated(true)
-    setCards(tickerList.map(input => ({ symbol: input, loading: true, data: null, error: false })))
+    setCards(tickerList.map(input => ({ symbol: input, loading: true, data: null, error: false, originalQuery: input })))
 
     tickerList.forEach(async (input) => {
       const resolved = await resolveSymbol(input)
       const symbol = resolved?.symbol ?? input.toUpperCase()
       if (resolved?.name) setTickerNames(prev => ({ ...prev, [symbol]: resolved.name! }))
-      // If resolved to a different symbol, update the card key
       setCards(prev => prev.map(c => c.symbol === input ? { ...c, symbol } : c))
       const data = await loadCard(symbol)
       if (data?.name) setTickerNames(prev => ({ ...prev, [symbol]: data.name }))
       setCards(prev => [
-        { symbol, loading: false, data, error: !data },
+        { symbol, loading: false, data, error: !data, originalQuery: input },
         ...prev.filter(c => c.symbol !== symbol && c.symbol !== input),
       ])
     })

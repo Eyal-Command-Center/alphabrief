@@ -40,6 +40,11 @@ export async function GET(req: Request) {
     earningsRes.json(),
   ])
 
+  // Reject invalid/unknown tickers — no name and no price means nothing to show
+  if (!profile.name && (!quote.c || quote.c === 0)) {
+    return Response.json({ error: 'Invalid ticker' }, { status: 404 })
+  }
+
   const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 4) : []
   const latestRec = Array.isArray(recommendations) ? recommendations[0] : null
   const nextEarnings = earningsRaw?.earningsCalendar?.[0] ?? null
