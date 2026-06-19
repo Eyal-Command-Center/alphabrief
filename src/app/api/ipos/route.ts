@@ -21,7 +21,7 @@ export async function GET() {
 
   const [recentRaw, upcomingRaw] = await Promise.all([recentRes.json(), upcomingRes.json()])
 
-  interface IpoEntry {
+  interface IpoRaw {
     date: string
     name: string
     symbol: string
@@ -32,7 +32,7 @@ export async function GET() {
     exchange: string
   }
 
-  const format = (entry: IpoEntry) => ({
+  const format = (entry: IpoRaw, enrichment?: EnrichmentData) => ({
     date: entry.date,
     name: entry.name,
     symbol: entry.symbol || null,
@@ -41,19 +41,62 @@ export async function GET() {
     dealSize: entry.totalSharesValue || null,
     status: entry.status,
     exchange: entry.exchange || null,
+    currentPrice: enrichment?.currentPrice ?? null,
+    priceChange: enrichment?.priceChange ?? null,
+    sector: enrichment?.sector ?? null,
+    marketCap: enrichment?.marketCap ?? null,
   })
 
-  const recent = (recentRaw?.ipoCalendar ?? [])
-    .filter((e: IpoEntry) => e.status === 'priced')
-    .sort((a: IpoEntry, b: IpoEntry) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const recentList: IpoRaw[] = (recentRaw?.ipoCalendar ?? [])
+    .filter((e: IpoRaw) => e.status === 'priced')
+    .sort((a: IpoRaw, b: IpoRaw) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 20)
-    .map(format)
 
-  const upcoming = (upcomingRaw?.ipoCalendar ?? [])
-    .filter((e: IpoEntry) => e.status !== 'priced')
-    .sort((a: IpoEntry, b: IpoEntry) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const upcomingList: IpoRaw[] = (upcomingRaw?.ipoCalendar ?? [])
+    .filter((e: IpoRaw) => e.status !== 'priced')
+    .sort((a: IpoRaw, b: IpoRaw) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 20)
-    .map(format)
+
+  // Enrich all entries that have a symbol
+  interface EnrichmentData {
+    symbol: string
+    currentPrice: number | null
+    priceChange: number | null
+    sector: string | null
+    marketCap: number | null
+  }
+
+  const allEntries = [...recentList, ...upcomingList]
+  const symbolsToEnrich = [...new Set(allEntries.map(e => e.symbol).filter(Boolean))]
+
+  const enrichMap: Record<string, EnrichmentData> = {}
+
+  if (symbolsToEnrich.length > 0) {
+    const enrichResults = await Promise.all(
+      symbolsToEnrich.map(async (symbol) => {
+        try {
+          const [quoteRes, profileRes] = await Promise.all([
+            fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
+            fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
+          ])
+          const [quote, profile] = await Promise.all([quoteRes.json(), profileRes.json()])
+          return {
+            symbol,
+            currentPrice: quote.c > 0 ? quote.c : null,
+            priceChange: typeof quote.dp === 'number' ? quote.dp : null,
+            sector: profile.finnhubIndustry || null,
+            marketCap: profile.marketCapitalization > 0 ? profile.marketCapitalization : null,
+          } as EnrichmentData
+        } catch {
+          return { symbol, currentPrice: null, priceChange: null, sector: null, marketCap: null } as EnrichmentData
+        }
+      })
+    )
+    enrichResults.forEach(e => { enrichMap[e.symbol] = e })
+  }
+
+  const recent = recentList.map(e => format(e, enrichMap[e.symbol]))
+  const upcoming = upcomingList.map(e => format(e, enrichMap[e.symbol]))
 
   const result = { recent, upcoming }
   cache = { data: result, ts: Date.now() }

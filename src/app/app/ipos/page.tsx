@@ -15,6 +15,10 @@ interface IpoEntry {
   dealSize: number | null
   status: string
   exchange: string | null
+  currentPrice: number | null
+  priceChange: number | null
+  sector: string | null
+  marketCap: number | null
 }
 
 function formatDealSize(val: number | null) {
@@ -45,47 +49,71 @@ function daysUntil(dateStr: string) {
   return `In ${diff} days`
 }
 
+function formatMarketCap(val: number | null) {
+  if (!val) return null
+  // Finnhub returns market cap in millions
+  if (val >= 1000) return `$${(val / 1000).toFixed(1)}B`
+  return `$${val.toFixed(0)}M`
+}
+
 function IpoRow({ ipo, onSymbolClick }: { ipo: IpoEntry; onSymbolClick: (s: string) => void }) {
+  const hasCurrentPrice = ipo.currentPrice !== null
+  const priceUp = (ipo.priceChange ?? 0) >= 0
+
   return (
-    <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors">
-      <div className="flex items-start gap-4 min-w-0">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white font-semibold text-sm">{ipo.name}</span>
-            {ipo.symbol && (
-              <button
-                onClick={() => onSymbolClick(ipo.symbol!)}
-                className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded hover:bg-emerald-500/20 transition-colors shrink-0"
-              >
-                {ipo.symbol}
-              </button>
-            )}
-            {ipo.exchange && (
-              <span className="text-xs text-slate-500 bg-slate-800 border border-white/8 px-2 py-0.5 rounded shrink-0">
-                {ipo.exchange}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-            <span className="text-slate-500 text-xs">{formatDate(ipo.date)}</span>
-            {ipo.price && <span className="text-slate-300 text-xs font-medium">@ ${ipo.price}</span>}
-            {ipo.shares && <span className="text-slate-500 text-xs">{formatShares(ipo.shares)}</span>}
-            {ipo.dealSize && <span className="text-slate-400 text-xs font-medium">{formatDealSize(ipo.dealSize)}</span>}
-          </div>
+    <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors gap-4">
+      {/* Left: name + details */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-white font-semibold text-sm">{ipo.name}</span>
+          {ipo.symbol && (
+            <button
+              onClick={() => onSymbolClick(ipo.symbol!)}
+              className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded hover:bg-emerald-500/20 transition-colors shrink-0"
+            >
+              {ipo.symbol}
+            </button>
+          )}
+          {ipo.exchange && (
+            <span className="text-xs text-slate-500 bg-slate-800 border border-white/8 px-2 py-0.5 rounded shrink-0">
+              {ipo.exchange}
+            </span>
+          )}
+          {ipo.sector && (
+            <span className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded shrink-0">
+              {ipo.sector}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+          <span className="text-slate-500 text-xs">{formatDate(ipo.date)}</span>
+          {ipo.price && <span className="text-slate-400 text-xs">IPO @ ${ipo.price}</span>}
+          {ipo.shares && <span className="text-slate-500 text-xs">{formatShares(ipo.shares)}</span>}
+          {ipo.dealSize && <span className="text-slate-500 text-xs">{formatDealSize(ipo.dealSize)} deal</span>}
+          {ipo.marketCap && <span className="text-slate-500 text-xs">{formatMarketCap(ipo.marketCap)} mkt cap</span>}
         </div>
       </div>
-      <div className="shrink-0 ml-4">
-        {ipo.status === 'priced' ? (
+
+      {/* Right: current price or countdown */}
+      <div className="shrink-0 text-right">
+        {hasCurrentPrice ? (
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-white font-semibold text-sm">${ipo.currentPrice!.toFixed(2)}</span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              priceUp
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                : 'bg-red-500/15 text-red-400 border border-red-500/25'
+            }`}>
+              {priceUp ? '+' : ''}{ipo.priceChange!.toFixed(2)}%
+            </span>
+          </div>
+        ) : ipo.status === 'priced' ? (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
             Priced
           </span>
-        ) : ipo.status === 'expected' ? (
+        ) : (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25">
             {daysUntil(ipo.date)}
-          </span>
-        ) : (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-white/8">
-            {ipo.status}
           </span>
         )}
       </div>
