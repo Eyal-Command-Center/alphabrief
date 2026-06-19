@@ -424,6 +424,7 @@ export default function MyStocksPage() {
         </div>
         <div className="flex items-center gap-4 md:gap-6">
           <Link href="/app" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">My Stocks</Link>
+          <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
           <Link href="/app/calendar" className="text-sm text-slate-500 hover:text-white transition-colors">Calendar</Link>
           {user ? (
             <>
