@@ -233,22 +233,15 @@ export default function IposPage() {
           <Link href="/app/ipos" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">IPOs</Link>
           <Link href="/app/calendar" className="text-sm text-slate-500 hover:text-white transition-colors">Calendar</Link>
           <Link href="/app/settings" className="text-sm text-slate-500 hover:text-white transition-colors">Settings</Link>
-          {user ? (
-            <>
-              <span className="text-slate-600 text-xs hidden md:inline">{user.email}</span>
-              <button onClick={signOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
-            </>
-          ) : (
+          {!user && (
             <button onClick={() => setShowAuth(true)} className="text-xs text-slate-400 hover:text-white transition-colors">Sign in</button>
           )}
         </div>
-        <div className="flex md:hidden">
-          {user ? (
-            <button onClick={signOut} className="text-xs text-slate-500">Sign out</button>
-          ) : (
+        {!user && (
+          <div className="flex md:hidden">
             <button onClick={() => setShowAuth(true)} className="text-xs text-emerald-400 font-medium">Sign in</button>
-          )}
-        </div>
+          </div>
+        )}
       </nav>
 
       <main className="flex-1 px-4 md:px-8 pt-10 pb-24 md:pb-16 max-w-3xl mx-auto w-full">

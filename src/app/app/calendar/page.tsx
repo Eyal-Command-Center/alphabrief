@@ -168,7 +168,6 @@ export default function CalendarPage() {
           <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
           <Link href="/app/calendar" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Calendar</Link>
           <Link href="/app/settings" className="text-sm text-slate-500 hover:text-white transition-colors">Settings</Link>
-          <span className="text-slate-600 text-xs hidden md:inline">{user.email}</span>
         </div>
       </nav>
 

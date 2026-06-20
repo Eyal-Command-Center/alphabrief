@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AuthModal } from '@/components/AuthModal'
@@ -205,6 +206,8 @@ export default function MyStocksPage() {
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const tParam = searchParams.get('t')
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -231,11 +234,10 @@ export default function MyStocksPage() {
       })
   }, [user])
 
+  // Reactive to ?t= param — re-runs on every client-side navigation to /app?t=X
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const t = params.get('t')
-    if (!t) return
-    const symbol = t.toUpperCase()
+    if (!tParam) return
+    const symbol = tParam.toUpperCase()
     setTickers(symbol)
     setHasGenerated(true)
     setSavedTickers(prev => Array.from(new Set([...prev, symbol])))
@@ -245,16 +247,12 @@ export default function MyStocksPage() {
       .then(data => {
         setCards([{ symbol, loading: false, data, error: !data }])
       })
-  }, [])
+  }, [tParam])
 
   // Save tickers that came in via ?t= URL param once user is known
-  // Reads from DB first to avoid race condition with the portfolio load effect
   useEffect(() => {
-    if (!user) return
-    const params = new URLSearchParams(window.location.search)
-    const t = params.get('t')
-    if (!t) return
-    const symbol = t.toUpperCase()
+    if (!user || !tParam) return
+    const symbol = tParam.toUpperCase()
     supabase.from('portfolios').select('tickers').eq('user_id', user.id).single()
       .then(({ data }) => {
         const existing: string[] = data?.tickers ?? []
@@ -262,7 +260,7 @@ export default function MyStocksPage() {
         setSavedTickers(merged)
         persistTickers(merged)
       })
-  }, [user])
+  }, [user, tParam])
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -430,12 +428,7 @@ export default function MyStocksPage() {
           <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
           <Link href="/app/calendar" className="text-sm text-slate-500 hover:text-white transition-colors">Calendar</Link>
           <Link href="/app/settings" className="text-sm text-slate-500 hover:text-white transition-colors">Settings</Link>
-          {user ? (
-            <>
-              <span className="text-slate-600 text-xs hidden md:inline">{user.email}</span>
-              <button onClick={signOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
-            </>
-          ) : (
+          {!user && (
             <button
               onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
               className="text-xs text-slate-400 hover:text-white transition-colors"
@@ -444,19 +437,16 @@ export default function MyStocksPage() {
             </button>
           )}
         </div>
-        {/* Mobile: just show auth button */}
-        <div className="flex md:hidden items-center gap-3">
-          {user ? (
-            <button onClick={signOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
-          ) : (
+        {!user && (
+          <div className="flex md:hidden items-center gap-3">
             <button
               onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
               className="text-xs text-emerald-400 font-medium"
             >
               Sign in
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </nav>
 
       <main className="flex-1 flex flex-col items-center px-4 md:px-6 pt-10 pb-24 md:pb-16">

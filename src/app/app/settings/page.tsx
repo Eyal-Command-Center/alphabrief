@@ -223,15 +223,7 @@ function Nav({ user, onSignOut }: { user: User | null; onSignOut: () => void }) 
         <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
         <Link href="/app/calendar" className="text-sm text-slate-500 hover:text-white transition-colors">Calendar</Link>
         <Link href="/app/settings" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Settings</Link>
-        {user && (
-          <button onClick={onSignOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
-        )}
       </div>
-      {user && (
-        <div className="flex md:hidden">
-          <button onClick={onSignOut} className="text-xs text-slate-500">Sign out</button>
-        </div>
-      )}
     </nav>
   )
 }
