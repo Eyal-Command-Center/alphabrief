@@ -256,7 +256,6 @@ function SettingsContent() {
                 </div>
                 {/* Example alert preview */}
                 <div className="bg-slate-800/60 border border-white/5 rounded-xl p-4 mb-5">
-                  <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3">Example alert</p>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-white font-bold text-sm">TSLA thesis changed</span>
                     <span className="text-xs text-slate-500">today</span>
