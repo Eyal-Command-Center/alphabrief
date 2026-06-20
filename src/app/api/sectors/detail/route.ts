@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const TTL_MS = 60 * 60 * 1000 // 1 hour
+const TTL_MS = 12 * 60 * 60 * 1000 // 12 hours
 const CACHE_KEY = 'sectors_all'
 
 const supabase = createClient(
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')?.toLowerCase()
 
-  const cacheHeaders = { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' }
+  const cacheHeaders = { 'Cache-Control': 's-maxage=43200, stale-while-revalidate=86400' }
 
   // Check Supabase cache — survives deployments and is shared across all instances
   const { data: cached } = await supabase
