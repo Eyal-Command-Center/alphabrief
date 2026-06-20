@@ -125,7 +125,7 @@ function SettingsContent() {
   function toggleAlertTicker(t: string) {
     setAlertTickers(prev => {
       if (prev.includes(t)) return prev.filter(x => x !== t)
-      if (prev.length >= 5) return prev // max 5
+      if (prev.length >= 10) return prev // max 10
       return [...prev, t]
     })
   }
