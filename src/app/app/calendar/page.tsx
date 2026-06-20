@@ -145,6 +145,7 @@ export default function CalendarPage() {
             onClose={() => setShowAuth(false)}
           />
         )}
+        <MobileNav />
       </div>
     )
   }
