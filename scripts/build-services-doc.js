@@ -343,10 +343,10 @@ const doc = new Document({
       // 2.8 Massive
       h2('2.8  Massive (massive.com)'),
       body('Role: stock market API — real-time and historical tick data via REST and WebSockets.'),
-      warn('Status: API key obtained and stored in .env.local. NOT yet wired into any route. NOT yet added to Vercel. Add to Vercel before deploying any feature that uses it.'),
+      warn('Status: API key stored in .env.local AND Vercel. Not yet wired into any route — integration pending.'),
       spacer(),
       bullet('Dashboard + keys: https://massive.com/dashboard/keys'),
-      bullet('Env var: MASSIVE_API_KEY (currently in .env.local only)'),
+      bullet('Env var: MASSIVE_API_KEY (in .env.local and Vercel environment variables)'),
       bullet('Free tier: unlimited usage on free tier (per their homepage).'),
       bullet('Planned use cases: price charts (OHLCV history), real-time WebSocket price streaming, economy/macro data for sector views.'),
       bullet('Key differentiator vs Finnhub: WebSocket push (live price ticking in UI), richer historical candle data, macro/economy endpoints.'),
@@ -368,7 +368,7 @@ const doc = new Document({
           { cells: ['ANTHROPIC_API_KEY',             '/api/brief, /api/sectors/detail',    'Server-only.'],                                                                     monoCol: 0 },
           { cells: ['RESEND_API_KEY',                '/api/cron/email-report',             'Server-only.'],                                                                     monoCol: 0 },
           { cells: ['CRON_SECRET',                   '/api/cron/email-report',             'Shared secret — Vercel sends it, endpoint validates it.'],                          monoCol: 0 },
-          { cells: ['MASSIVE_API_KEY',               'Not yet used',                       '⚠️ In .env.local only. Add to Vercel before first feature that calls Massive API.'], monoCol: 0, highlight: true },
+          { cells: ['MASSIVE_API_KEY',               'Not yet used in any route',           'In .env.local and Vercel. Ready to use — just wire it into a route.'],             monoCol: 0 },
         ]
       ),
       spacer(),
@@ -426,7 +426,7 @@ const doc = new Document({
           { cells: ['Resend',       'Free',           '3,000/mo, 100/day',            'Upgrade if daily sender list exceeds 100 users'],                                highlight: false },
           { cells: ['Google Cloud', 'Check billing',  '—',                            '⚠️ REVIEW BEFORE SEPTEMBER 2026 — payment or trial expiry may be due'],          highlight: true },
           { cells: ['Namecheap',    'Annual renewal', 'Check renewal date',           'Renew alphabrief.io domain before expiry'],                                      highlight: false },
-          { cells: ['Massive',      'Free tier',      'Unlimited (per homepage)',      '⚠️ Key in .env.local only — add to Vercel before first use'],                    highlight: true },
+          { cells: ['Massive',      'Free tier',      'Unlimited (per homepage)',      'Key in .env.local and Vercel. Not yet used in code — integration pending.'],     highlight: false },
         ]
       ),
       spacer(),
