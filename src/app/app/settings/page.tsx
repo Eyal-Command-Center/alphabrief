@@ -29,22 +29,39 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!user) return
+
+    // Apply cached prefs instantly so the toggle shows the right state immediately
+    try {
+      const cached = localStorage.getItem('ab_email_prefs')
+      if (cached) {
+        const { enabled, frequency: freq } = JSON.parse(cached)
+        setEmailEnabled(enabled ?? false)
+        setFrequency(freq ?? 'weekly')
+        setLoadingPrefs(false)
+      }
+    } catch {}
+
+    // Fetch fresh from API and update cache
     fetch('/api/email-prefs')
       .then(r => r.json())
       .then(data => {
         setEmailEnabled(data.enabled ?? false)
         setFrequency(data.frequency ?? 'weekly')
         setLoadingPrefs(false)
+        try { localStorage.setItem('ab_email_prefs', JSON.stringify(data)) } catch {}
       })
   }, [user])
 
   async function handleSave() {
     setSaving(true)
+    const prefs = { enabled: emailEnabled, frequency }
     await fetch('/api/email-prefs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: emailEnabled, frequency }),
+      body: JSON.stringify(prefs),
     })
+    // Update local cache immediately on save
+    try { localStorage.setItem('ab_email_prefs', JSON.stringify(prefs)) } catch {}
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)

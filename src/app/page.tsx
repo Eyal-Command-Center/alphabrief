@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AuthModal } from '@/components/AuthModal'
-import { createClient } from '@/lib/supabase'
 
 export default function LandingPage() {
   const [ticker, setTicker] = useState('')
@@ -14,14 +13,6 @@ export default function LandingPage() {
   const router = useRouter()
   const searchRef = useRef<HTMLDivElement>(null)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Redirect already-logged-in users straight to their dashboard
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/app')
-    })
-  }, [])
 
   function handleInput(value: string) {
     setTicker(value)
