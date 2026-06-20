@@ -638,13 +638,23 @@ function MyStocksContent() {
                 </div>
               )}
               {!isPro && (
-                <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
-                  <span className="text-emerald-400 text-base shrink-0">✦</span>
-                  <p className="text-slate-300 text-sm">
-                    Never miss a thesis flip —{' '}
-                    <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">get instant alerts with AlphaBrief Pro</a>.
-                  </p>
-                </div>
+                <a href="/app/settings" className="block group">
+                  <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-slate-800/60 to-slate-900 px-4 py-3.5 hover:border-emerald-500/50 transition-all">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-emerald-400 text-base shrink-0">✦</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-white font-semibold text-sm">Thesis change alerts</span>
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Pro</span>
+                          </div>
+                          <p className="text-slate-400 text-xs">Know the moment a thesis flips — 🟢 Positive → 🔴 Negative — before you're caught off guard.</p>
+                        </div>
+                      </div>
+                      <span className="text-emerald-400 text-sm font-semibold shrink-0 group-hover:translate-x-0.5 transition-transform">→</span>
+                    </div>
+                  </div>
+                </a>
               )}
             </div>
           )}

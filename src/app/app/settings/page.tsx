@@ -79,10 +79,19 @@ function SettingsContent() {
       try { localStorage.setItem('ab_email_prefs', JSON.stringify(data)) } catch {}
     })
 
-    // Load alert tickers + full saved list
+    // Load alert tickers + full saved list — cache for instant display
+    try {
+      const cachedTickers = localStorage.getItem('ab_alert_tickers')
+      if (cachedTickers) {
+        const { alert_tickers, tickers } = JSON.parse(cachedTickers)
+        setAlertTickers(alert_tickers ?? [])
+        setSavedTickers(tickers ?? [])
+      }
+    } catch {}
     fetch('/api/alert-tickers').then(r => r.json()).then(data => {
       setAlertTickers(data.alert_tickers ?? [])
       setSavedTickers(data.tickers ?? [])
+      try { localStorage.setItem('ab_alert_tickers', JSON.stringify(data)) } catch {}
     })
   }, [user])
 
@@ -113,9 +122,9 @@ function SettingsContent() {
     })
     // Update cache
     try {
-      const cached = localStorage.getItem('ab_email_prefs')
+      const cached = localStorage.getItem('ab_alert_tickers')
       const prev = cached ? JSON.parse(cached) : {}
-      localStorage.setItem('ab_email_prefs', JSON.stringify({ ...prev, alert_tickers: alertTickers }))
+      localStorage.setItem('ab_alert_tickers', JSON.stringify({ ...prev, alert_tickers: alertTickers }))
     } catch {}
     setSavingAlerts(false)
     setSavedAlerts(true)
