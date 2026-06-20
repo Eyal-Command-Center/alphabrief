@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AuthModal } from '@/components/AuthModal'
 
@@ -45,7 +44,7 @@ export default function LandingClient() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
 
-      {/* Nav */}
+      {/* Nav — Sign In + Get Started */}
       <nav className="px-6 md:px-12 py-5 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-2.5">
           <span className="text-emerald-400 text-2xl font-light" style={{ fontFamily: 'Georgia, serif' }}>α</span>
@@ -54,16 +53,24 @@ export default function LandingClient() {
           </span>
           <span className="ml-1 text-xs text-slate-600 border border-slate-800 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
-        <button
-          onClick={() => setShowAuth(true)}
-          className="text-sm text-slate-400 hover:text-white transition-colors"
-        >
-          Sign in
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAuth(true)}
+            className="text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Sign in
+          </button>
+          <button
+            onClick={() => router.push('/app')}
+            className="text-sm bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-4 py-2 rounded-lg transition-all"
+          >
+            Get started
+          </button>
+        </div>
       </nav>
 
-      {/* Hero */}
-      <section className="flex-1 flex flex-col lg:flex-row items-center gap-12 xl:gap-20 px-6 md:px-12 py-16 md:py-24 max-w-7xl mx-auto w-full">
+      {/* Hero — more vertical breathing room */}
+      <section className="flex-1 flex flex-col lg:flex-row items-center gap-12 xl:gap-20 px-6 md:px-12 py-24 md:py-32 max-w-7xl mx-auto w-full">
 
         {/* Left — copy + input */}
         <div className="flex-1 max-w-lg">
@@ -72,23 +79,29 @@ export default function LandingClient() {
             <span className="text-emerald-400 text-xs font-medium tracking-wide">Built for investors who want signal, not noise.</span>
           </div>
 
-          <h1 className="text-4xl md:text-5xl xl:text-6xl font-semibold tracking-tight text-white leading-[1.1] mb-6">
+          <h1 className="text-4xl md:text-5xl xl:text-6xl font-semibold tracking-tight text-white leading-[1.1] mb-4">
             Know what moves<br />
             <span className="text-emerald-400">your portfolio.</span>
           </h1>
 
-          <p className="text-slate-400 text-base md:text-lg leading-relaxed mb-10">
-            Type any ticker. Get an instant snapshot — price action, AI thesis, upcoming catalyst, and top news. No noise, no jargon.
+          {/* Differentiation line */}
+          <p className="text-slate-500 text-sm md:text-base mb-5">
+            Not a chatbot. A purpose-built tool that knows the numbers — price, earnings, analyst consensus — and turns them into a clear thesis in seconds.
           </p>
 
-          <form onSubmit={handleTry} className="flex gap-3 mb-3">
+          <p className="text-slate-400 text-base md:text-lg leading-relaxed mb-8">
+            Type any ticker. Get an instant snapshot — AI thesis, upcoming catalyst, key risks, and top news.
+          </p>
+
+          {/* Search box — more prominent border */}
+          <form onSubmit={handleTry} className="flex gap-3 mb-4">
             <div className="relative flex-1" ref={searchRef}>
               <input
                 type="text"
                 value={ticker}
                 onChange={(e) => handleInput(e.target.value)}
-                placeholder="Ticker or company name..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/60 text-sm transition-colors"
+                placeholder="Try: NVDA, TSLA, AAPL..."
+                className="w-full bg-white/5 border-2 border-white/20 hover:border-white/30 focus:border-emerald-500/70 rounded-xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none text-sm transition-colors"
                 onKeyDown={(e) => e.key === 'Escape' && setShowSuggestions(false)}
                 onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
@@ -116,14 +129,27 @@ export default function LandingClient() {
               Try it →
             </button>
           </form>
+
+          {/* What you get checklist */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
+            {['AI thesis', 'Key risks', 'Next catalyst', 'Latest news', 'Valuation snapshot'].map((item) => (
+              <span key={item} className="flex items-center gap-1.5 text-xs text-slate-400">
+                <span className="text-emerald-500">✓</span> {item}
+              </span>
+            ))}
+          </div>
           <p className="text-slate-600 text-xs">No account needed to try. Free to sign up.</p>
         </div>
 
         {/* Right — Product card preview */}
         <div className="flex-1 w-full max-w-md xl:max-w-lg">
           <div className="relative">
-            <div className="absolute -inset-4 bg-emerald-500/5 blur-3xl rounded-3xl pointer-events-none" />
-            <div className="relative bg-slate-900 border border-white/8 rounded-2xl p-5 md:p-6">
+            {/* Emerald ambient glow */}
+            <div className="absolute -inset-6 bg-emerald-500/8 blur-3xl rounded-3xl pointer-events-none" />
+
+            <div className="relative bg-slate-900 border border-white/[0.06] rounded-2xl p-5 md:p-6">
+
+              {/* Card header */}
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-black border border-white/10 flex items-center justify-center shrink-0">
@@ -142,6 +168,8 @@ export default function LandingClient() {
                   <p className="text-emerald-400 text-sm font-medium">+3.21%</p>
                 </div>
               </div>
+
+              {/* Metrics */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                 {[
                   { label: 'Mkt Cap', value: '$2.1T' },
@@ -155,12 +183,16 @@ export default function LandingClient() {
                   </div>
                 ))}
               </div>
+
+              {/* Quick Take */}
               <div className="bg-slate-800/40 border border-white/5 rounded-xl p-3.5 mb-3">
                 <p className="text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-1.5">Quick Take</p>
                 <p className="text-slate-300 text-xs leading-relaxed">
                   Up 3.2% as hyperscalers front-load GPU capacity ahead of next-gen model rollouts. ✅ Blackwell ramp ahead of schedule, margins holding at record highs.
                 </p>
               </div>
+
+              {/* Thesis + Catalyst */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-slate-800/40 border border-white/5 rounded-xl p-3">
                   <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">Thesis Check</p>
@@ -171,23 +203,38 @@ export default function LandingClient() {
                   <p className="text-slate-300 text-xs leading-relaxed">Earnings Aug 28 after close — consensus EPS est. $0.64.</p>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
 
       </section>
 
+      {/* Divider */}
       <div className="border-t border-white/5 max-w-7xl mx-auto w-full" />
 
+      {/* Features */}
       <section className="px-6 md:px-12 py-16 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
           {[
-            { icon: '◎', title: 'Instant stock snapshot', desc: 'Price action, AI thesis, upcoming catalyst, and top news — for any ticker, in seconds.' },
-            { icon: '◷', title: 'Earnings calendar', desc: 'Track upcoming earnings for your whole portfolio in one view. Never get caught off-guard by a print.' },
-            { icon: '◈', title: 'Signal, not noise', desc: 'No Bloomberg terminal, no 40-tab research session. Just what actually matters today.' },
+            {
+              icon: '◎',
+              title: 'Instant stock snapshot',
+              desc: 'Price action, AI thesis, upcoming catalyst, and top news — for any ticker, in seconds.',
+            },
+            {
+              icon: '◷',
+              title: 'Earnings calendar',
+              desc: 'Track upcoming earnings for your whole portfolio in one view. Never get caught off-guard by a print.',
+            },
+            {
+              icon: '◈',
+              title: 'Signal, not noise',
+              desc: 'No Bloomberg terminal, no 40-tab research session. Just what actually matters today.',
+            },
           ].map((f) => (
             <div key={f.title}>
-              <span className="text-emerald-400 text-xl mb-4 block">{f.icon}</span>
+              <span className="text-emerald-400 text-2xl mb-4 block">{f.icon}</span>
               <h3 className="text-white font-semibold mb-2">{f.title}</h3>
               <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
             </div>
@@ -195,6 +242,7 @@ export default function LandingClient() {
         </div>
       </section>
 
+      {/* Footer */}
       <footer className="border-t border-white/5 px-6 md:px-12 py-5 flex items-center justify-between max-w-7xl mx-auto w-full">
         <span className="text-slate-700 text-xs">© 2025 AlphaBrief</span>
         <span className="text-slate-700 text-xs">alphabrief.io</span>
