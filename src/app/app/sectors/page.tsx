@@ -163,10 +163,10 @@ export default function SectorsPage() {
           {/* Card + arrows */}
           <div className="flex items-start gap-3">
 
-            {/* Left arrow */}
+            {/* Left arrow — desktop only */}
             <button
               onClick={prev}
-              className="mt-6 p-2 rounded-xl bg-slate-900 border border-white/8 text-slate-400 hover:text-white hover:border-white/20 transition-all shrink-0"
+              className="hidden md:flex mt-6 p-2 rounded-xl bg-slate-900 border border-white/8 text-slate-400 hover:text-white hover:border-white/20 transition-all shrink-0"
             >
               ←
             </button>
@@ -294,10 +294,10 @@ export default function SectorsPage() {
               </div>
             </div>
 
-            {/* Right arrow */}
+            {/* Right arrow — desktop only */}
             <button
               onClick={next}
-              className="mt-6 p-2 rounded-xl bg-slate-900 border border-white/8 text-slate-400 hover:text-white hover:border-white/20 transition-all shrink-0"
+              className="hidden md:flex mt-6 p-2 rounded-xl bg-slate-900 border border-white/8 text-slate-400 hover:text-white hover:border-white/20 transition-all shrink-0"
             >
               →
             </button>

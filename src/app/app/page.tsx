@@ -84,7 +84,7 @@ function StockCard({ card }: { card: CardState }) {
 
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {d.logo ? (
             <img src={d.logo} alt={d.symbol} className="w-10 h-10 rounded-xl bg-white object-contain p-1 shrink-0" />
           ) : (
@@ -92,7 +92,7 @@ function StockCard({ card }: { card: CardState }) {
               <span className="text-white font-bold text-sm">{d.symbol[0]}</span>
             </div>
           )}
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-emerald-400 font-bold text-xl tracking-tight">{d.symbol}</span>
               {analyst && (
@@ -101,12 +101,12 @@ function StockCard({ card }: { card: CardState }) {
                 </span>
               )}
             </div>
-            <p className="text-slate-400 text-sm">{d.name}</p>
-            {d.sector && <p className="text-slate-600 text-xs mt-0.5">{d.sector}</p>}
+            <p className="text-slate-400 text-sm truncate">{d.name}</p>
+            {d.sector && <p className="text-slate-600 text-xs mt-0.5 truncate">{d.sector}</p>}
           </div>
         </div>
-        <div className="text-right shrink-0 ml-4">
-          <p className="text-white font-bold text-2xl">${d.price?.toFixed(2)}</p>
+        <div className="text-right shrink-0 ml-3">
+          <p className="text-white font-bold text-xl md:text-2xl">${d.price?.toFixed(2)}</p>
           <p className={`text-sm font-medium ${d.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {d.change >= 0 ? '+' : ''}{d.change?.toFixed(2)}%
           </p>

@@ -72,7 +72,7 @@ function IpoRow({
   const priceUp = (ipo.priceChange ?? 0) >= 0
 
   return (
-    <div className="px-4 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors">
+    <div className="px-4 py-4 border-b border-white/5 last:border-0 hover:bg-slate-800/30 transition-colors">
       {/* Top row: name + badge + price */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="min-w-0 flex-1">
@@ -111,7 +111,7 @@ function IpoRow({
                   ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
                   : 'bg-red-500/15 text-red-400 border border-red-500/25'
               }`}>
-                {priceUp ? '+' : ''}{ipo.priceChange!.toFixed(2)}%
+                {priceUp ? '+' : ''}{(ipo.priceChange ?? 0).toFixed(2)}%
               </span>
             </>
           ) : ipo.status === 'priced' ? (
