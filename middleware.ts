@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          // Only write to the response — request cookies are readonly in Edge
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -23,11 +23,13 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  // getUser() is the correct call in middleware (getSession() is deprecated here)
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Logged-in users hitting the landing page go straight to the app
-  if (session && request.nextUrl.pathname === '/') {
-    return NextResponse.redirect(new URL('/app', request.url))
+  if (user && request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/app'
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse
