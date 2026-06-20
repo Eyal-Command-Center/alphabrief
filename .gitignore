@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated docs (built by GitHub Actions — download from Actions tab after each push)
+AlphaBrief-Services-Reference.docx
