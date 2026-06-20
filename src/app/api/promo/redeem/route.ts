@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
 
   const normalized = code.trim().toUpperCase()
 
+  // Reject suspiciously long codes — valid promo codes are short
+  if (normalized.length > 50) {
+    return Response.json({ error: 'Invalid promo code.' }, { status: 400 })
+  }
+
   // Check if already Pro
   const { data: portfolio } = await adminSupabase
     .from('portfolios')

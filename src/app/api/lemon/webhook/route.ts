@@ -16,7 +16,13 @@ export async function POST(req: NextRequest) {
   hmac.update(rawBody)
   const digest = hmac.digest('hex')
 
-  if (signature !== digest) {
+  // Use timingSafeEqual to prevent timing attacks
+  const sigBuffer = Buffer.from(signature ?? '', 'hex')
+  const digestBuffer = Buffer.from(digest, 'hex')
+  const valid = sigBuffer.length === digestBuffer.length &&
+    crypto.timingSafeEqual(sigBuffer, digestBuffer)
+
+  if (!valid) {
     return Response.json({ error: 'Invalid signature' }, { status: 401 })
   }
 

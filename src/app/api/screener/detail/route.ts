@@ -12,10 +12,16 @@ export async function GET(req: Request) {
 
   if (!symbol) return Response.json({ error: 'Missing symbol' }, { status: 400 })
 
+  // Sanitize: only allow valid ticker characters to prevent URL injection
+  const safeSymbol = symbol.trim().toUpperCase()
+  if (!/^[A-Z0-9.\-]{1,10}$/.test(safeSymbol)) {
+    return Response.json({ error: 'Invalid symbol' }, { status: 400 })
+  }
+
   const cacheHeaders = { 'Cache-Control': 's-maxage=1200, stale-while-revalidate=3600' }
 
   // Return cached result if fresh
-  const cached = cache.get(symbol)
+  const cached = cache.get(safeSymbol)
   if (cached && Date.now() - cached.ts < TTL_MS) {
     return Response.json(cached.data, { headers: cacheHeaders })
   }
@@ -25,12 +31,12 @@ export async function GET(req: Request) {
   const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const [profileRes, quoteRes, metricsRes, recommendRes, newsRes, earningsRes] = await Promise.all([
-    fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
-    fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
-    fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${FINNHUB_TOKEN}`),
-    fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
-    fetch(`https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${weekAgo}&to=${today}&token=${FINNHUB_TOKEN}`),
-    fetch(`https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${in30Days}&symbol=${symbol}&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/quote?symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${safeSymbol}&metric=all&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/company-news?symbol=${safeSymbol}&from=${weekAgo}&to=${today}&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${in30Days}&symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
   ])
 
   const [profile, quote, metrics, recommendations, newsRaw, earningsRaw] = await Promise.all([
@@ -60,7 +66,7 @@ export async function GET(req: Request) {
   const peValue = metrics?.metric?.peBasicExclExtraTTM
   const peDisplay = isProfitable && peValue && peValue > 0 ? peValue.toFixed(1) : null
 
-  const prompt = `You are a sharp equity analyst writing for a retail investor. Given this data on ${symbol} (${profile.name ?? symbol}), return a JSON object with exactly these three fields:
+  const prompt = `You are a sharp equity analyst writing for a retail investor. Given this data on ${safeSymbol} (${profile.name ?? safeSymbol}), return a JSON object with exactly these three fields:
 
 {
   "quickTake": "2-3 sentences on the stock's current situation — price action, what's driving it, anything worth flagging. Use ⚠️ for risks, ✅ for positives.",
@@ -101,8 +107,8 @@ Rules:
   }
 
   const result = {
-    symbol,
-    name: profile.name ?? symbol,
+    symbol: safeSymbol,
+    name: profile.name ?? safeSymbol,
     sector: profile.finnhubIndustry ?? '',
     logo: profile.logo ?? '',
     price: quote.c,
@@ -122,6 +128,6 @@ Rules:
     catalyst: parsed.catalyst,
   }
 
-  cache.set(symbol, { data: result, ts: Date.now() })
+  cache.set(safeSymbol, { data: result, ts: Date.now() })
   return Response.json(result, { headers: cacheHeaders })
 }

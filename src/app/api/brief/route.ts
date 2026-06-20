@@ -1,7 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
+
+const SYMBOL_RE = /^[A-Z0-9.\-]{1,10}$/
 
 async function getQuote(symbol: string) {
   const res = await fetch(
@@ -34,10 +38,28 @@ async function getEarnings(symbol: string) {
 }
 
 export async function POST(req: Request) {
+  // Auth check — this route calls Claude + Finnhub, never expose unauthenticated
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { tickers } = await req.json()
 
+  // Cap at 20 and sanitize each symbol
+  const safeTickers: string[] = (Array.isArray(tickers) ? tickers : [])
+    .slice(0, 20)
+    .map((s: unknown) => String(s).trim().toUpperCase())
+    .filter((s: string) => SYMBOL_RE.test(s))
+
+  if (!safeTickers.length) return Response.json({ brief: '' })
+
   const data = await Promise.all(
-    tickers.map(async (symbol: string) => {
+    safeTickers.map(async (symbol) => {
       const [quote, news, earnings] = await Promise.all([
         getQuote(symbol),
         getNews(symbol),

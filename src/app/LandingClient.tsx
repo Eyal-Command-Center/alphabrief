@@ -242,6 +242,67 @@ export default function LandingClient() {
         </div>
       </section>
 
+      {/* Thesis Alerts — Pro callout */}
+      <section className="px-6 md:px-12 pb-16 max-w-7xl mx-auto w-full">
+        <div className="relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-white/[0.06] rounded-2xl p-8 md:p-10 overflow-hidden">
+          {/* Ambient glow */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 blur-3xl rounded-full pointer-events-none" />
+
+          <div className="relative flex flex-col md:flex-row gap-10 items-start md:items-center">
+
+            {/* Left — copy */}
+            <div className="flex-1 max-w-md">
+              <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 mb-5">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                <span className="text-emerald-400 text-xs font-semibold tracking-wide">Pro feature</span>
+              </div>
+              <h2 className="text-white text-2xl md:text-3xl font-semibold leading-tight mb-3">
+                Know when the thesis flips.
+              </h2>
+              <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-6">
+                AlphaBrief monitors your watchlist every trading day. The moment a stock shifts from positive to negative — or back — you get an email. Know before the market prices it in.
+              </p>
+              <button
+                onClick={() => router.push('/app')}
+                className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-5 py-3 rounded-xl transition-all text-sm"
+              >
+                Get thesis alerts →
+              </button>
+            </div>
+
+            {/* Right — mini alert preview */}
+            <div className="flex-shrink-0 w-full md:w-72">
+              <div className="bg-slate-950 border border-white/[0.07] rounded-2xl overflow-hidden shadow-xl">
+                {/* Email header */}
+                <div className="bg-slate-900 px-4 py-3 border-b border-white/[0.06]">
+                  <p className="text-emerald-400 text-xs font-semibold">AlphaBrief <span className="text-slate-600">· Thesis Alert</span></p>
+                </div>
+                <div className="p-4">
+                  <p className="text-white font-semibold text-sm mb-1">TSLA thesis changed</p>
+                  <p className="text-slate-500 text-xs mb-4">We detected a shift in the investment thesis.</p>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="bg-slate-900 rounded-xl p-3 text-center">
+                      <p className="text-slate-600 text-[10px] uppercase tracking-widest mb-1">Was</p>
+                      <p className="text-lg">🟢</p>
+                      <p className="text-slate-500 text-xs font-medium mt-1">Positive</p>
+                    </div>
+                    <div className="bg-red-950/30 border border-red-500/20 rounded-xl p-3 text-center">
+                      <p className="text-slate-600 text-[10px] uppercase tracking-widest mb-1">Now</p>
+                      <p className="text-lg">🔴</p>
+                      <p className="text-red-400 text-xs font-semibold mt-1">Negative</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-900 border-l-2 border-red-500/60 rounded-r-lg px-3 py-2">
+                    <p className="text-slate-400 text-xs leading-relaxed">🔴 Negative — margin compression and rising competition from legacy OEMs is eroding the EV premium thesis.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 md:px-12 py-5 flex items-center justify-between max-w-7xl mx-auto w-full">
         <span className="text-slate-700 text-xs">© 2025 AlphaBrief</span>
