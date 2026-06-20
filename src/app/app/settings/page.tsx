@@ -224,26 +224,26 @@ function SettingsContent() {
         )}
 
         {/* Side-by-side on desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
 
           {/* LEFT — Pro card */}
           {!isPro ? (
             <div className="bg-slate-900 border border-white/8 rounded-2xl p-6 relative overflow-hidden">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-              <div className="relative">
+              <div className="relative flex flex-col h-full">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Pro</span>
                   <span className="text-slate-500 text-xs">$9 / month</span>
                 </div>
                 <h3 className="text-white font-semibold text-lg mb-1">Thesis change alerts</h3>
                 <p className="text-slate-400 text-sm mb-5">
-                  We monitor up to 5 of your stocks daily. The moment a thesis flips, you get an email.
+                  We monitor up to 10 of your stocks daily. The moment a thesis flips, you get an email.
                 </p>
                 <div className="grid grid-cols-1 gap-2 mb-5">
                   {[
                     { icon: '📡', label: 'Daily monitoring', desc: 'Every trading day, 8am ET' },
                     { icon: '⚡', label: 'Instant alerts', desc: 'Email when thesis flips' },
-                    { icon: '🎯', label: 'Up to 5 stocks', desc: 'Your most important holdings' },
+                    { icon: '🎯', label: 'Up to 10 stocks', desc: 'Your most important holdings' },
                   ].map(f => (
                     <div key={f.label} className="flex items-center gap-3 bg-slate-800/50 border border-white/5 rounded-xl px-3 py-2.5">
                       <span className="text-base">{f.icon}</span>
@@ -254,6 +254,7 @@ function SettingsContent() {
                     </div>
                   ))}
                 </div>
+                <div className="flex-1" />
                 <button
                   onClick={handleUpgrade}
                   disabled={checkingOut}
@@ -275,7 +276,7 @@ function SettingsContent() {
                   <h3 className="text-white font-semibold">Thesis alerts active</h3>
                 </div>
                 <p className="text-slate-400 text-sm">
-                  Monitoring up to 5 stocks daily. You&apos;ll be emailed the moment a thesis sentiment changes.
+                  Monitoring up to 10 stocks daily. You&apos;ll be emailed the moment a thesis sentiment changes.
                 </p>
               </div>
 
@@ -284,7 +285,7 @@ function SettingsContent() {
                 <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
                   Stocks to monitor
                   <span className="text-slate-600 normal-case tracking-normal ml-2 font-normal">
-                    ({alertTickers.length}/5 selected)
+                    ({alertTickers.length}/10 selected)
                   </span>
                 </p>
                 {savedTickers.length === 0 ? (
@@ -293,7 +294,7 @@ function SettingsContent() {
                   <div className="flex flex-wrap gap-2 mb-3">
                     {savedTickers.map(t => {
                       const active = alertTickers.includes(t)
-                      const atMax = alertTickers.length >= 5 && !active
+                      const atMax = alertTickers.length >= 10 && !active
                       return (
                         <button
                           key={t}

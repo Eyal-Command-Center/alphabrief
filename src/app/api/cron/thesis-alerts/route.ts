@@ -134,8 +134,8 @@ export async function GET(req: Request) {
     const { user_id, user_email, tickers } = portfolio
     if (!tickers?.length || !user_email) continue
 
-    // Cap at 5 stocks for Pro
-    const watchlist: string[] = (tickers as string[]).slice(0, 5)
+    // Cap at 10 stocks for Pro
+    const watchlist: string[] = (tickers as string[]).slice(0, 10)
 
     for (const symbol of watchlist) {
       checked++

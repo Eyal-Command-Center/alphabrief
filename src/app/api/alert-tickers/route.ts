@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { alert_tickers } = await req.json()
-  const capped = (alert_tickers as string[]).slice(0, 5)
+  const capped = (alert_tickers as string[]).slice(0, 10)
 
   await supabase.from('portfolios').upsert({
     user_id: user.id,
