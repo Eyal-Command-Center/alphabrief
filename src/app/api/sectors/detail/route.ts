@@ -21,15 +21,17 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')?.toLowerCase()
 
+  const cacheHeaders = { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' }
+
   // Return cached full result if fresh
   if (cache && Date.now() - cache.ts < TTL_MS) {
     const all = cache.data as Record<string, unknown>
     if (sector) {
       return sector in all
-        ? Response.json(all[sector])
+        ? Response.json(all[sector], { headers: cacheHeaders })
         : Response.json({ error: 'Invalid sector' }, { status: 400 })
     }
-    return Response.json(all)
+    return Response.json(all, { headers: cacheHeaders })
   }
 
   // Fetch all ETF quotes + news in parallel
@@ -105,10 +107,11 @@ Rules:
 
   cache = { data: result, ts: Date.now() }
 
+
   if (sector) {
     return sector in result
-      ? Response.json(result[sector])
+      ? Response.json(result[sector], { headers: cacheHeaders })
       : Response.json({ error: 'Invalid sector' }, { status: 400 })
   }
-  return Response.json(result)
+  return Response.json(result, { headers: cacheHeaders })
 }

@@ -12,10 +12,12 @@ export async function GET(req: Request) {
 
   if (!symbol) return Response.json({ error: 'Missing symbol' }, { status: 400 })
 
+  const cacheHeaders = { 'Cache-Control': 's-maxage=1200, stale-while-revalidate=3600' }
+
   // Return cached result if fresh
   const cached = cache.get(symbol)
   if (cached && Date.now() - cached.ts < TTL_MS) {
-    return Response.json(cached.data)
+    return Response.json(cached.data, { headers: cacheHeaders })
   }
 
   const today = new Date().toISOString().split('T')[0]
@@ -121,5 +123,5 @@ Rules:
   }
 
   cache.set(symbol, { data: result, ts: Date.now() })
-  return Response.json(result)
+  return Response.json(result, { headers: cacheHeaders })
 }

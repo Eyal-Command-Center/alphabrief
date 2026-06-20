@@ -113,16 +113,20 @@ export default function SettingsPage() {
               </p>
             </div>
             {/* Toggle */}
-            <button
-              onClick={() => setEmailEnabled(v => !v)}
-              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-6 mt-0.5 ${
-                emailEnabled ? 'bg-emerald-500' : 'bg-slate-700'
-              }`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                emailEnabled ? 'translate-x-5' : 'translate-x-0'
-              }`} />
-            </button>
+            {loadingPrefs ? (
+              <div className="w-11 h-6 rounded-full bg-slate-700 animate-pulse shrink-0 ml-6 mt-0.5" />
+            ) : (
+              <button
+                onClick={() => setEmailEnabled(v => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-6 mt-0.5 ${
+                  emailEnabled ? 'bg-emerald-500' : 'bg-slate-700'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  emailEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            )}
           </div>
 
           {/* Frequency picker — shown when enabled */}

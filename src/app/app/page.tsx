@@ -253,10 +253,19 @@ function MyStocksContent() {
     setTickers(symbol)
     setHasGenerated(true)
     setSavedTickers(prev => Array.from(new Set([...prev, symbol])))
+
+    // Show cached data instantly if available, otherwise show loader
+    const cached = getCachedStock(symbol)
+    if (cached) {
+      setCards([{ symbol, loading: false, data: cached, error: false }])
+      return
+    }
+
     setCards([{ symbol, loading: true, data: null, error: false }])
     fetch(`/api/screener/detail?symbol=${symbol}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
+        if (data) setCachedStock(symbol, data)
         setCards([{ symbol, loading: false, data, error: !data }])
       })
   }, [tParam])
@@ -346,10 +355,28 @@ function MyStocksContent() {
     return first ? { symbol: first.symbol, name: first.name } : null
   }
 
+  // Client-side localStorage cache (20 min TTL — matches server cache)
+  function getCachedStock(sym: string): StockDetail | null {
+    try {
+      const raw = localStorage.getItem(`ab_stock_${sym}`)
+      if (!raw) return null
+      const { data, ts } = JSON.parse(raw)
+      if (Date.now() - ts > 20 * 60 * 1000) return null
+      return data as StockDetail
+    } catch { return null }
+  }
+  function setCachedStock(sym: string, data: StockDetail) {
+    try { localStorage.setItem(`ab_stock_${sym}`, JSON.stringify({ data, ts: Date.now() })) } catch {}
+  }
+
   async function loadCard(symbol: string): Promise<StockDetail | null> {
+    const fromCache = getCachedStock(symbol)
+    if (fromCache) return fromCache
     const res = await fetch(`/api/screener/detail?symbol=${symbol}`)
     if (!res.ok) return null
-    return res.json()
+    const data = await res.json()
+    if (data) setCachedStock(symbol, data)
+    return data
   }
 
   async function generateAll() {
