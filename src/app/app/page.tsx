@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
@@ -183,6 +183,18 @@ function StockCard({ card }: { card: CardState }) {
 }
 
 export default function MyStocksPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-slate-800 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <MyStocksContent />
+    </Suspense>
+  )
+}
+
+function MyStocksContent() {
   const [tickers, setTickers] = useState('')
   const [cards, setCards] = useState<CardState[]>([])
 
