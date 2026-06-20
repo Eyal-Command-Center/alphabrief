@@ -594,8 +594,8 @@ function MyStocksContent() {
             </div>
           )}
 
-          {/* Upsell nudge for unauth users who have searched */}
-          {!hasCards && !user && savedTickers.length > 0 && (
+          {/* Upsell nudge — always shown for unauth users */}
+          {!hasCards && !user && (
             <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3 mb-6">
               <span className="text-emerald-400 text-base shrink-0">✦</span>
               <p className="text-slate-300 text-sm">
@@ -605,11 +605,15 @@ function MyStocksContent() {
             </div>
           )}
 
-          {/* Empty state hint — first time, no stocks yet */}
-          {!hasCards && !user && savedTickers.length === 0 && (
-            <p className="text-slate-700 text-xs text-center mb-8">
-              No account needed — just type a ticker and hit Generate.
-            </p>
+          {/* Email delivery nudge for signed-in users */}
+          {!hasCards && user && (
+            <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3 mb-6">
+              <span className="text-emerald-400 text-base shrink-0">✦</span>
+              <p className="text-slate-300 text-sm">
+                Get your stocks delivered to your inbox —{' '}
+                <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
+              </p>
+            </div>
           )}
 
           {/* Cards feed */}
@@ -626,6 +630,17 @@ function MyStocksContent() {
               {cards.map((card) => (
                 <StockCard key={card.symbol} card={card} />
               ))}
+
+              {/* Email delivery nudge for signed-in users */}
+              {user && allLoaded && (
+                <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
+                  <span className="text-emerald-400 text-base shrink-0">✦</span>
+                  <p className="text-slate-300 text-sm">
+                    Get your stocks delivered to your inbox —{' '}
+                    <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
+                  </p>
+                </div>
+              )}
 
               {/* Sign-up prompt */}
               {!user && allLoaded && !showAuthForm && (
