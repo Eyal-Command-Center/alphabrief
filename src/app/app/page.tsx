@@ -212,6 +212,9 @@ function MyStocksContent() {
   const [tickerNames, setTickerNames] = useState<Record<string, string>>({})
   const [hasGenerated, setHasGenerated] = useState(false)
 
+  const [emailEnabled, setEmailEnabled] = useState(false)
+  const [isPro, setIsPro] = useState(false)
+
   const [suggestions, setSuggestions] = useState<{ symbol: string; name: string }[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -231,6 +234,23 @@ function MyStocksContent() {
     })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    // Load email + pro status from cache first, then API
+    try {
+      const cached = localStorage.getItem('ab_email_prefs')
+      if (cached) {
+        const { enabled, is_pro } = JSON.parse(cached)
+        setEmailEnabled(enabled ?? false)
+        setIsPro(is_pro ?? false)
+      }
+    } catch {}
+    fetch('/api/email-prefs').then(r => r.json()).then(data => {
+      setEmailEnabled(data.enabled ?? false)
+      setIsPro(data.is_pro ?? false)
+    })
+  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -605,14 +625,27 @@ function MyStocksContent() {
             </div>
           )}
 
-          {/* Email delivery nudge for signed-in users */}
+          {/* Signed-in nudges */}
           {!hasCards && user && (
-            <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3 mb-6">
-              <span className="text-emerald-400 text-base shrink-0">✦</span>
-              <p className="text-slate-300 text-sm">
-                Get your stocks delivered to your inbox —{' '}
-                <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
-              </p>
+            <div className="flex flex-col gap-2 mb-6">
+              {!emailEnabled && (
+                <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
+                  <span className="text-emerald-400 text-base shrink-0">✦</span>
+                  <p className="text-slate-300 text-sm">
+                    Get your stocks delivered to your inbox —{' '}
+                    <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
+                  </p>
+                </div>
+              )}
+              {!isPro && (
+                <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
+                  <span className="text-emerald-400 text-base shrink-0">✦</span>
+                  <p className="text-slate-300 text-sm">
+                    Never miss a thesis flip —{' '}
+                    <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">get instant alerts with AlphaBrief Pro</a>.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -631,14 +664,27 @@ function MyStocksContent() {
                 <StockCard key={card.symbol} card={card} />
               ))}
 
-              {/* Email delivery nudge for signed-in users */}
+              {/* Signed-in nudges below cards */}
               {user && allLoaded && (
-                <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
-                  <span className="text-emerald-400 text-base shrink-0">✦</span>
-                  <p className="text-slate-300 text-sm">
-                    Get your stocks delivered to your inbox —{' '}
-                    <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
-                  </p>
+                <div className="flex flex-col gap-2">
+                  {!emailEnabled && (
+                    <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
+                      <span className="text-emerald-400 text-base shrink-0">✦</span>
+                      <p className="text-slate-300 text-sm">
+                        Get your stocks delivered to your inbox —{' '}
+                        <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
+                      </p>
+                    </div>
+                  )}
+                  {!isPro && (
+                    <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3">
+                      <span className="text-emerald-400 text-base shrink-0">✦</span>
+                      <p className="text-slate-300 text-sm">
+                        Never miss a thesis flip —{' '}
+                        <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">get instant alerts with AlphaBrief Pro</a>.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
