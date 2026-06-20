@@ -254,7 +254,25 @@ function SettingsContent() {
                     </div>
                   ))}
                 </div>
-                <div className="flex-1" />
+                {/* Example alert preview */}
+                <div className="bg-slate-800/60 border border-white/5 rounded-xl p-4 mb-5">
+                  <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3">Example alert</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white font-bold text-sm">TSLA thesis changed</span>
+                    <span className="text-xs text-slate-500">today</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 bg-slate-700/50 rounded-lg px-2.5 py-1.5">
+                      <span className="text-sm">🟢</span>
+                      <span className="text-xs text-slate-300">Positive</span>
+                    </div>
+                    <span className="text-slate-600 text-sm">→</span>
+                    <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5">
+                      <span className="text-sm">🔴</span>
+                      <span className="text-xs text-red-300 font-semibold">Negative</span>
+                    </div>
+                  </div>
+                </div>
                 <button
                   onClick={handleUpgrade}
                   disabled={checkingOut}
