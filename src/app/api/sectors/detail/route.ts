@@ -1,9 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@supabase/supabase-js'
 
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const TTL_MS = 60 * 60 * 1000 // 1 hour
+const CACHE_KEY = 'sectors_all'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 const SECTORS = [
   { key: 'technology',     name: 'Technology',             etf: 'XLK', topStocks: ['NVDA', 'AAPL', 'MSFT'] },
@@ -15,17 +22,21 @@ const SECTORS = [
   { key: 'comm-services',  name: 'Communication Services', etf: 'XLC', topStocks: ['META', 'GOOGL', 'NFLX'] },
 ]
 
-let cache: { data: unknown; ts: number } | null = null
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')?.toLowerCase()
 
   const cacheHeaders = { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' }
 
-  // Return cached full result if fresh
-  if (cache && Date.now() - cache.ts < TTL_MS) {
-    const all = cache.data as Record<string, unknown>
+  // Check Supabase cache — survives deployments and is shared across all instances
+  const { data: cached } = await supabase
+    .from('cache')
+    .select('data, created_at')
+    .eq('key', CACHE_KEY)
+    .single()
+
+  if (cached && Date.now() - new Date(cached.created_at).getTime() < TTL_MS) {
+    const all = cached.data as Record<string, unknown>
     if (sector) {
       return sector in all
         ? Response.json(all[sector], { headers: cacheHeaders })
@@ -105,8 +116,8 @@ Rules:
     }
   }
 
-  cache = { data: result, ts: Date.now() }
-
+  // Persist to Supabase — survives deployments, shared across all instances
+  await supabase.from('cache').upsert({ key: CACHE_KEY, data: result, created_at: new Date().toISOString() })
 
   if (sector) {
     return sector in result
