@@ -236,7 +236,7 @@ function SettingsContent() {
     <div className="min-h-screen bg-black text-white flex flex-col">
       <Nav />
 
-      <main className="flex-1 px-4 md:px-8 pt-10 pb-24 md:pb-16 max-w-4xl mx-auto w-full">
+      <main className="flex-1 px-4 md:px-8 pt-10 pb-24 md:pb-16 max-w-2xl mx-auto w-full">
 
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -262,7 +262,7 @@ function SettingsContent() {
         )}
 
         {/* Side-by-side on desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        <div className="flex flex-col gap-4">
 
           {/* LEFT — Pro card */}
           {!isPro ? (
@@ -442,8 +442,8 @@ function SettingsContent() {
             </div>
           )}
 
-          {/* RIGHT — Email Reports */}
-          <div className="bg-slate-900 border border-white/8 rounded-2xl p-6">
+          {/* Email Reports */}
+          <div id="email-reports" className="bg-slate-900 border border-white/8 rounded-2xl p-6">
             <div className="flex items-start justify-between mb-1">
               <div>
                 <h3 className="text-white font-semibold text-base">Email Reports</h3>

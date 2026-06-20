@@ -633,7 +633,7 @@ function MyStocksContent() {
                   <span className="text-emerald-400 text-base shrink-0">✦</span>
                   <p className="text-slate-300 text-sm">
                     Get your stocks delivered to your inbox —{' '}
-                    <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
+                    <a href="/app/settings#email-reports" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
                   </p>
                 </div>
               )}
@@ -682,7 +682,7 @@ function MyStocksContent() {
                       <span className="text-emerald-400 text-base shrink-0">✦</span>
                       <p className="text-slate-300 text-sm">
                         Get your stocks delivered to your inbox —{' '}
-                        <a href="/app/settings" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
+                        <a href="/app/settings#email-reports" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">set up daily or weekly email reports</a>.
                       </p>
                     </div>
                   )}
