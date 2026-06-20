@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AuthModal } from '@/components/AuthModal'
+import { MobileNav } from '@/components/MobileNav'
 
 interface SectorData {
   sector: string
@@ -100,7 +101,7 @@ export default function SectorsPage() {
           </span>
           <span className="ml-1 text-xs text-slate-600 border border-slate-800 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="hidden md:flex items-center gap-4 md:gap-6">
           <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
           <Link href="/app/sectors" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">Sectors</Link>
           <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
@@ -115,9 +116,16 @@ export default function SectorsPage() {
             <button onClick={() => setShowAuth(true)} className="text-xs text-slate-400 hover:text-white transition-colors">Sign in</button>
           )}
         </div>
+        <div className="flex md:hidden">
+          {user ? (
+            <button onClick={signOut} className="text-xs text-slate-500">Sign out</button>
+          ) : (
+            <button onClick={() => setShowAuth(true)} className="text-xs text-emerald-400 font-medium">Sign in</button>
+          )}
+        </div>
       </nav>
 
-      <main className="flex-1 flex flex-col items-center px-4 md:px-8 pt-10 pb-16">
+      <main className="flex-1 flex flex-col items-center px-4 md:px-8 pt-10 pb-24 md:pb-16">
         <div className="w-full max-w-2xl">
 
           {/* Page title */}
@@ -304,6 +312,7 @@ export default function SectorsPage() {
           onClose={() => setShowAuth(false)}
         />
       )}
+      <MobileNav />
     </div>
   )
 }

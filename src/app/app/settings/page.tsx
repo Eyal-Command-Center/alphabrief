@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AuthModal } from '@/components/AuthModal'
+import { MobileNav } from '@/components/MobileNav'
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -86,6 +87,7 @@ export default function SettingsPage() {
             onClose={() => setShowAuth(false)}
           />
         )}
+        <MobileNav />
       </div>
     )
   }
@@ -94,7 +96,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-black text-white flex flex-col">
       <Nav user={user} onSignOut={signOut} />
 
-      <main className="flex-1 px-4 md:px-8 pt-10 pb-16 max-w-2xl mx-auto w-full">
+      <main className="flex-1 px-4 md:px-8 pt-10 pb-24 md:pb-16 max-w-2xl mx-auto w-full">
 
         <div className="mb-8">
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">Settings</h2>
@@ -200,6 +202,7 @@ export default function SettingsPage() {
         </div>
 
       </main>
+      <MobileNav />
     </div>
   )
 }
@@ -214,7 +217,7 @@ function Nav({ user, onSignOut }: { user: User | null; onSignOut: () => void }) 
         </span>
         <span className="ml-1 text-xs text-slate-600 border border-slate-800 rounded px-2 py-0.5 hidden sm:inline">beta</span>
       </div>
-      <div className="flex items-center gap-4 md:gap-6">
+      <div className="hidden md:flex items-center gap-4 md:gap-6">
         <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
         <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
         <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
@@ -224,6 +227,11 @@ function Nav({ user, onSignOut }: { user: User | null; onSignOut: () => void }) 
           <button onClick={onSignOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
         )}
       </div>
+      {user && (
+        <div className="flex md:hidden">
+          <button onClick={onSignOut} className="text-xs text-slate-500">Sign out</button>
+        </div>
+      )}
     </nav>
   )
 }

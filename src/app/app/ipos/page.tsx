@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AuthModal } from '@/components/AuthModal'
+import { MobileNav } from '@/components/MobileNav'
 
 interface IpoEntry {
   date: string
@@ -71,73 +72,77 @@ function IpoRow({
   const priceUp = (ipo.priceChange ?? 0) >= 0
 
   return (
-    <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors gap-4">
-      {/* Left: name + details */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-white font-semibold text-sm">{ipo.name}</span>
-          {ipo.symbol && (
-            <button
-              onClick={() => onSymbolClick(ipo.symbol!)}
-              className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded hover:bg-emerald-500/20 transition-colors shrink-0"
-            >
-              {ipo.symbol}
-            </button>
-          )}
-          {ipo.exchange && (
-            <span className="text-xs text-slate-500 bg-slate-800 border border-white/8 px-2 py-0.5 rounded shrink-0">
-              {ipo.exchange}
-            </span>
-          )}
-          {ipo.sector && (
-            <span className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded shrink-0">
-              {ipo.sector}
-            </span>
-          )}
+    <div className="px-4 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors">
+      {/* Top row: name + badge + price */}
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white font-semibold text-sm">{ipo.name}</span>
+            {ipo.symbol && (
+              <button
+                onClick={() => onSymbolClick(ipo.symbol!)}
+                className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded hover:bg-emerald-500/20 transition-colors shrink-0"
+              >
+                {ipo.symbol}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {ipo.sector && (
+              <span className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded">
+                {ipo.sector}
+              </span>
+            )}
+            {ipo.exchange && (
+              <span className="text-xs text-slate-500 bg-slate-800 border border-white/8 px-2 py-0.5 rounded">
+                {ipo.exchange}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-          <span className="text-slate-500 text-xs">{formatDate(ipo.date)}</span>
-          {ipo.price && <span className="text-slate-400 text-xs">IPO @ ${ipo.price}</span>}
-          {ipo.shares && <span className="text-slate-500 text-xs">{formatShares(ipo.shares)}</span>}
-          {ipo.dealSize && <span className="text-slate-500 text-xs">{formatDealSize(ipo.dealSize)} deal</span>}
-          {ipo.marketCap && <span className="text-slate-500 text-xs">{formatMarketCap(ipo.marketCap)} mkt cap</span>}
+
+        {/* Price / status */}
+        <div className="shrink-0 flex flex-col items-end gap-1.5">
+          {hasCurrentPrice ? (
+            <>
+              <span className="text-white font-semibold text-sm">${ipo.currentPrice!.toFixed(2)}</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                priceUp
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                  : 'bg-red-500/15 text-red-400 border border-red-500/25'
+              }`}>
+                {priceUp ? '+' : ''}{ipo.priceChange!.toFixed(2)}%
+              </span>
+            </>
+          ) : ipo.status === 'priced' ? (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+              Priced
+            </span>
+          ) : (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25">
+              {daysUntil(ipo.date)}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Right: price + save */}
-      <div className="shrink-0 flex flex-col items-end gap-2">
-        {/* Price block */}
-        {hasCurrentPrice ? (
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-white font-semibold text-sm">${ipo.currentPrice!.toFixed(2)}</span>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              priceUp
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
-                : 'bg-red-500/15 text-red-400 border border-red-500/25'
-            }`}>
-              {priceUp ? '+' : ''}{ipo.priceChange!.toFixed(2)}%
-            </span>
-          </div>
-        ) : ipo.status === 'priced' ? (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-            Priced
-          </span>
-        ) : (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25">
-            {daysUntil(ipo.date)}
-          </span>
-        )}
-
-        {/* Save button */}
+      {/* Bottom row: metadata + save */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-slate-500 text-xs">{formatDate(ipo.date)}</span>
+          {ipo.price && <span className="text-slate-400 text-xs">IPO @ ${ipo.price}</span>}
+          {ipo.dealSize && <span className="text-slate-500 text-xs">{formatDealSize(ipo.dealSize)}</span>}
+          {ipo.marketCap && <span className="text-slate-500 text-xs">{formatMarketCap(ipo.marketCap)} mkt cap</span>}
+        </div>
         {ipo.symbol && (
           saved ? (
-            <span className="text-xs text-emerald-500 font-medium">✓ Saved</span>
+            <span className="text-xs text-emerald-500 font-medium shrink-0">✓ Saved</span>
           ) : (
             <button
               onClick={() => onSave(ipo.symbol!)}
-              className="text-xs text-slate-500 hover:text-emerald-400 transition-colors border border-white/8 hover:border-emerald-500/30 px-2 py-0.5 rounded"
+              className="text-xs text-slate-500 hover:text-emerald-400 transition-colors border border-white/8 hover:border-emerald-500/30 px-2 py-0.5 rounded shrink-0"
             >
-              + My Stocks
+              + Save
             </button>
           )
         )}
@@ -222,7 +227,7 @@ export default function IposPage() {
           </span>
           <span className="ml-1 text-xs text-slate-600 border border-slate-800 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="hidden md:flex items-center gap-4 md:gap-6">
           <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
           <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
           <Link href="/app/ipos" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">IPOs</Link>
@@ -237,9 +242,16 @@ export default function IposPage() {
             <button onClick={() => setShowAuth(true)} className="text-xs text-slate-400 hover:text-white transition-colors">Sign in</button>
           )}
         </div>
+        <div className="flex md:hidden">
+          {user ? (
+            <button onClick={signOut} className="text-xs text-slate-500">Sign out</button>
+          ) : (
+            <button onClick={() => setShowAuth(true)} className="text-xs text-emerald-400 font-medium">Sign in</button>
+          )}
+        </div>
       </nav>
 
-      <main className="flex-1 px-4 md:px-8 pt-10 pb-16 max-w-3xl mx-auto w-full">
+      <main className="flex-1 px-4 md:px-8 pt-10 pb-24 md:pb-16 max-w-3xl mx-auto w-full">
 
         <div className="mb-8">
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">IPO Tracker</h2>
@@ -314,6 +326,7 @@ export default function IposPage() {
           onClose={() => setShowAuth(false)}
         />
       )}
+      <MobileNav />
 
       {/* Toast */}
       {toast && (

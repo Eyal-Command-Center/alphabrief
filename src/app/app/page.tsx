@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AuthModal } from '@/components/AuthModal'
+import { MobileNav } from '@/components/MobileNav'
 
 interface StockDetail {
   symbol: string
@@ -113,7 +114,7 @@ function StockCard({ card }: { card: CardState }) {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         {[
           { label: 'Mkt Cap', value: formatMarketCap(d.marketCap) },
           { label: 'P/E', value: d.pe && d.pe > 0 ? d.pe.toFixed(1) : 'Pre-profit' },
@@ -423,7 +424,7 @@ export default function MyStocksPage() {
           </span>
           <span className="ml-1 text-xs text-slate-600 border border-slate-800 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="hidden md:flex items-center gap-4 md:gap-6">
           <Link href="/app" className="text-sm text-white font-medium border-b border-emerald-500 pb-0.5">My Stocks</Link>
           <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
           <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
@@ -443,9 +444,22 @@ export default function MyStocksPage() {
             </button>
           )}
         </div>
+        {/* Mobile: just show auth button */}
+        <div className="flex md:hidden items-center gap-3">
+          {user ? (
+            <button onClick={signOut} className="text-xs text-slate-500 hover:text-white transition-colors">Sign out</button>
+          ) : (
+            <button
+              onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
+              className="text-xs text-emerald-400 font-medium"
+            >
+              Sign in
+            </button>
+          )}
+        </div>
       </nav>
 
-      <main className="flex-1 flex flex-col items-center px-4 md:px-6 pt-10 pb-16">
+      <main className="flex-1 flex flex-col items-center px-4 md:px-6 pt-10 pb-24 md:pb-16">
         <div className="w-full max-w-2xl">
 
           {/* Hero title */}
@@ -619,6 +633,7 @@ export default function MyStocksPage() {
           onClose={() => setShowAuthForm(false)}
         />
       )}
+      <MobileNav />
     </div>
   )
 }

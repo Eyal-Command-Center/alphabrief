@@ -148,7 +148,7 @@ export default function LandingPage() {
               </div>
 
               {/* Metrics */}
-              <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                 {[
                   { label: 'Mkt Cap', value: '$2.1T' },
                   { label: 'P/E', value: '68.4' },

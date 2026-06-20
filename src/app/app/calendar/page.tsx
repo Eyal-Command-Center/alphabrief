@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AuthModal } from '@/components/AuthModal'
+import { MobileNav } from '@/components/MobileNav'
 
 interface EarningsEvent {
   symbol: string
@@ -115,7 +116,7 @@ export default function CalendarPage() {
             <span className="text-white font-semibold text-lg tracking-tight">Alpha<span className="text-emerald-400">Brief</span></span>
             <span className="ml-1 text-xs text-slate-600 border border-white/8 rounded px-2 py-0.5 hidden sm:inline">beta</span>
           </div>
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="hidden md:flex items-center gap-4 md:gap-6">
             <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
             <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
             <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
@@ -160,7 +161,7 @@ export default function CalendarPage() {
           </span>
           <span className="ml-1 text-xs text-slate-600 border border-white/8 rounded px-2 py-0.5 hidden sm:inline">beta</span>
         </div>
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="hidden md:flex items-center gap-4 md:gap-6">
           <Link href="/app" className="text-sm text-slate-500 hover:text-white transition-colors">My Stocks</Link>
           <Link href="/app/sectors" className="text-sm text-slate-500 hover:text-white transition-colors">Sectors</Link>
           <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
@@ -170,7 +171,7 @@ export default function CalendarPage() {
         </div>
       </nav>
 
-      <main className="flex-1 px-6 pt-12 pb-16 max-w-2xl mx-auto w-full">
+      <main className="flex-1 px-4 md:px-6 pt-8 md:pt-12 pb-24 md:pb-16 max-w-2xl mx-auto w-full">
         <div className="mb-10">
           <h2 className="text-3xl font-semibold tracking-tight text-white mb-2">Earnings Calendar</h2>
           <p className="text-slate-300 text-sm">Upcoming earnings for your saved tickers — next 60 days.</p>
@@ -201,11 +202,11 @@ export default function CalendarPage() {
             {events.map((event, i) => (
               <div
                 key={`${event.symbol}-${i}`}
-                className="bg-slate-900 border border-white/8 rounded-2xl px-6 py-5 flex items-center justify-between"
+                className="bg-slate-900 border border-white/8 rounded-2xl px-4 py-4 flex items-center justify-between gap-3"
               >
-                <div className="flex items-center gap-5">
-                  <div className="min-w-[64px]">
-                    <p className="text-emerald-400 font-bold text-lg tracking-tight">{event.symbol}</p>
+                <div className="flex items-center gap-3">
+                  <div className="min-w-[52px]">
+                    <p className="text-emerald-400 font-bold text-base tracking-tight">{event.symbol}</p>
                   </div>
                   <div>
                     <p className="text-white text-sm font-semibold">{formatDate(event.date)}</p>
@@ -249,7 +250,7 @@ export default function CalendarPage() {
               {macroEvents.map((event, i) => (
                 <div
                   key={i}
-                  className="bg-slate-900 border border-white/8 rounded-2xl px-6 py-5 flex items-center justify-between"
+                  className="bg-slate-900 border border-white/8 rounded-2xl px-4 py-4 flex items-center justify-between gap-3"
                 >
                   <div>
                     <p className="text-white text-sm font-semibold">{event.event}</p>
@@ -281,6 +282,7 @@ export default function CalendarPage() {
           </div>
         )}
       </main>
+      <MobileNav />
     </div>
   )
 }
