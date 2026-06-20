@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/email-report",
       "schedule": "0 13 * * 1-5"
+    },
+    {
+      "path": "/api/cron/thesis-alerts",
+      "schedule": "0 12 * * 1-5"
     }
   ]
 }

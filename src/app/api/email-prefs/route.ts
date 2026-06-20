@@ -18,13 +18,14 @@ export async function GET() {
 
   const { data } = await supabase
     .from('portfolios')
-    .select('email_enabled, email_frequency')
+    .select('email_enabled, email_frequency, is_pro')
     .eq('user_id', user.id)
     .single()
 
   return Response.json({
     enabled: data?.email_enabled ?? false,
     frequency: data?.email_frequency ?? 'weekly',
+    is_pro: data?.is_pro ?? false,
   })
 }
 

@@ -2,12 +2,26 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { AuthModal } from '@/components/AuthModal'
 import { MobileNav } from '@/components/MobileNav'
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
+  )
+}
+
+function SettingsContent() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
@@ -17,6 +31,12 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loadingPrefs, setLoadingPrefs] = useState(true)
+
+  const [isPro, setIsPro] = useState(false)
+  const [checkingOut, setCheckingOut] = useState(false)
+
+  const searchParams = useSearchParams()
+  const justUpgraded = searchParams.get('upgraded') === 'true'
 
   const supabase = createClient()
 
@@ -30,7 +50,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!user) return
 
-    // Apply cached prefs instantly so the toggle shows the right state immediately
+    // Apply cached prefs instantly
     try {
       const cached = localStorage.getItem('ab_email_prefs')
       if (cached) {
@@ -41,12 +61,13 @@ export default function SettingsPage() {
       }
     } catch {}
 
-    // Fetch fresh from API and update cache
+    // Fetch fresh prefs + pro status
     fetch('/api/email-prefs')
       .then(r => r.json())
       .then(data => {
         setEmailEnabled(data.enabled ?? false)
         setFrequency(data.frequency ?? 'weekly')
+        setIsPro(data.is_pro ?? false)
         setLoadingPrefs(false)
         try { localStorage.setItem('ab_email_prefs', JSON.stringify(data)) } catch {}
       })
@@ -60,11 +81,18 @@ export default function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs),
     })
-    // Update local cache immediately on save
     try { localStorage.setItem('ab_email_prefs', JSON.stringify(prefs)) } catch {}
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
+  }
+
+  async function handleUpgrade() {
+    setCheckingOut(true)
+    const res = await fetch('/api/lemon/checkout', { method: 'POST' })
+    const data = await res.json()
+    if (data.url) window.location.href = data.url
+    else setCheckingOut(false)
   }
 
   async function signOut() {
@@ -115,10 +143,87 @@ export default function SettingsPage() {
 
       <main className="flex-1 px-4 md:px-8 pt-10 pb-24 md:pb-16 max-w-2xl mx-auto w-full">
 
-        <div className="mb-8">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">Settings</h2>
-          <p className="text-slate-500 text-sm">{user.email}</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">Settings</h2>
+            <p className="text-slate-500 text-sm">{user.email}</p>
+          </div>
+          {isPro && (
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              ✦ Pro
+            </span>
+          )}
         </div>
+
+        {/* Upgrade success banner */}
+        {justUpgraded && (
+          <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 mb-6">
+            <span className="text-emerald-400 text-lg">✦</span>
+            <p className="text-emerald-300 text-sm font-medium">
+              Welcome to AlphaBrief Pro! Thesis alerts are now active for your stocks.
+            </p>
+          </div>
+        )}
+
+        {/* Pro — Thesis Alerts */}
+        {!isPro ? (
+          <div className="bg-slate-900 border border-white/8 rounded-2xl p-6 mb-4 relative overflow-hidden">
+            {/* Subtle glow */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  Pro
+                </span>
+                <span className="text-slate-500 text-xs">$9 / month</span>
+              </div>
+
+              <h3 className="text-white font-semibold text-lg mb-1">Thesis change alerts</h3>
+              <p className="text-slate-400 text-sm mb-5 max-w-sm">
+                We monitor up to 5 of your stocks daily. The moment a thesis flips — from positive to negative or vice versa — you get an email instantly.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                {[
+                  { icon: '📡', label: 'Daily monitoring', desc: 'Every trading day, 8am ET' },
+                  { icon: '⚡', label: 'Instant alerts', desc: 'Email when thesis flips' },
+                  { icon: '🎯', label: 'Up to 5 stocks', desc: 'Your most important holdings' },
+                ].map(f => (
+                  <div key={f.label} className="bg-slate-800/50 border border-white/5 rounded-xl p-3">
+                    <p className="text-lg mb-1">{f.icon}</p>
+                    <p className="text-white text-xs font-semibold">{f.label}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{f.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={handleUpgrade}
+                disabled={checkingOut}
+                className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-black font-bold px-6 py-3 rounded-xl text-sm transition-all flex items-center gap-2"
+              >
+                {checkingOut ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    Redirecting…
+                  </>
+                ) : 'Upgrade to Pro →'}
+              </button>
+              <p className="text-slate-600 text-xs mt-2">Cancel anytime. Billed monthly.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-900 border border-emerald-500/20 rounded-2xl p-6 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-emerald-400 text-lg">✦</span>
+              <h3 className="text-white font-semibold">Thesis alerts active</h3>
+            </div>
+            <p className="text-slate-400 text-sm">
+              We&apos;re monitoring up to 5 of your stocks daily and will email you the moment a thesis sentiment changes.
+            </p>
+          </div>
+        )}
 
         {/* Email Reports */}
         <div className="bg-slate-900 border border-white/8 rounded-2xl p-6">
@@ -129,7 +234,6 @@ export default function SettingsPage() {
                 Get a snapshot of your saved stocks — current price, daily performance, and key moves — delivered to your inbox.
               </p>
             </div>
-            {/* Toggle */}
             {loadingPrefs ? (
               <div className="w-11 h-6 rounded-full bg-slate-700 animate-pulse shrink-0 ml-6 mt-0.5" />
             ) : (
@@ -146,7 +250,6 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Frequency picker — shown when enabled */}
           <div className={`mt-5 transition-all ${emailEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
             <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">Frequency</p>
             <div className="flex gap-3">
@@ -158,12 +261,9 @@ export default function SettingsPage() {
                     : 'border-white/8 bg-slate-800/50 hover:border-white/20'
                 }`}
               >
-                <p className={`text-sm font-semibold ${frequency === 'daily' ? 'text-emerald-300' : 'text-white'}`}>
-                  Daily
-                </p>
+                <p className={`text-sm font-semibold ${frequency === 'daily' ? 'text-emerald-300' : 'text-white'}`}>Daily</p>
                 <p className="text-slate-500 text-xs mt-0.5">Every trading day, 9am ET</p>
               </button>
-
               <button
                 onClick={() => setFrequency('weekly')}
                 className={`flex-1 rounded-xl border px-4 py-3 text-left transition-all ${
@@ -172,14 +272,11 @@ export default function SettingsPage() {
                     : 'border-white/8 bg-slate-800/50 hover:border-white/20'
                 }`}
               >
-                <p className={`text-sm font-semibold ${frequency === 'weekly' ? 'text-emerald-300' : 'text-white'}`}>
-                  Weekly
-                </p>
+                <p className={`text-sm font-semibold ${frequency === 'weekly' ? 'text-emerald-300' : 'text-white'}`}>Weekly</p>
                 <p className="text-slate-500 text-xs mt-0.5">Every Monday, 9am ET</p>
               </button>
             </div>
 
-            {/* What you'll get */}
             <div className="mt-4 bg-slate-800/50 border border-white/5 rounded-xl p-4">
               <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">What you&apos;ll receive</p>
               <ul className="space-y-1.5">
@@ -197,7 +294,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Save button */}
           <div className="mt-5 flex items-center gap-3">
             <button
               onClick={handleSave}
@@ -206,9 +302,7 @@ export default function SettingsPage() {
             >
               {saving ? 'Saving…' : 'Save preferences'}
             </button>
-            {saved && (
-              <span className="text-emerald-400 text-sm">✓ Saved</span>
-            )}
+            {saved && <span className="text-emerald-400 text-sm">✓ Saved</span>}
           </div>
         </div>
 
