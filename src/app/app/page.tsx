@@ -361,13 +361,16 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
       <div className="mb-4">
         <button
           onClick={() => setShowChart((v) => !v)}
-          className="flex items-center gap-1.5 text-slate-600 hover:text-slate-400 transition-colors text-xs"
+          className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
+            showChart
+              ? 'bg-slate-700/60 border-white/10 text-slate-300'
+              : 'bg-slate-800/60 border-white/8 text-slate-400 hover:text-slate-200 hover:border-white/15'
+          }`}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M1 9l3-3 2 2 3-4 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M1 10l3.5-3.5 2.5 2.5 3-4.5 2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          {showChart ? 'Hide chart' : 'Show chart'}
-          <span className="text-slate-700 ml-1">· 1Y + EMA 200</span>
+          {showChart ? 'Hide chart' : '1Y chart + EMA 200'}
         </button>
         {showChart && <MiniChart symbol={d.symbol} />}
       </div>

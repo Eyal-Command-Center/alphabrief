@@ -42,14 +42,14 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Chart data unavailable' }, { status: 503 })
   }
 
-  // 1 year of daily candles
+  // Fetch 2 years so EMA 200 has enough warm-up data; we'll trim to last 1Y for display
   const to = new Date()
   const from = new Date(to)
-  from.setFullYear(from.getFullYear() - 1)
+  from.setFullYear(from.getFullYear() - 2)
   const fromStr = from.toISOString().split('T')[0]
   const toStr = to.toISOString().split('T')[0]
 
-  const url = `https://api.massive.com/v2/aggs/ticker/${safeSymbol}/range/1/day/${fromStr}/${toStr}?adjusted=true&sort=asc&limit=365&apiKey=${MASSIVE_API_KEY}`
+  const url = `https://api.massive.com/v2/aggs/ticker/${safeSymbol}/range/1/day/${fromStr}/${toStr}?adjusted=true&sort=asc&limit=750&apiKey=${MASSIVE_API_KEY}`
 
   let raw
   try {
@@ -72,12 +72,16 @@ export async function GET(req: Request) {
   const closes = candles.map((c: { c: number }) => c.c)
   const ema200 = calcEMA(closes, 200)
 
+  // Trim to last 365 trading days for display — EMA is already fully warmed up
+  const displayCandles = candles.slice(-365)
+  const displayEma = ema200.slice(-365)
+
   const result = {
     symbol: safeSymbol,
-    candles: candles.map((c: { t: number; c: number }, i: number) => ({
+    candles: displayCandles.map((c: { t: number; c: number }, i: number) => ({
       t: c.t,
       c: c.c,
-      ema200: ema200[i],
+      ema200: displayEma[i],
     })),
   }
 
