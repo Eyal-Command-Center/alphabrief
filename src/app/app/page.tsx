@@ -966,14 +966,71 @@ function MyStocksContent() {
             </div>
           )}
 
-          {/* Upsell nudge — always shown for unauth users */}
+          {/* Value ladder — unregistered users, before any card is generated */}
           {!hasCards && !user && (
-            <div className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3 mb-6">
-              <span className="text-emerald-400 text-base shrink-0">✦</span>
-              <p className="text-slate-300 text-sm">
-                <button onClick={() => { setShowAuthForm(true); setAuthMode('signup') }} className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">Register free</button>
-                {' '}to save your list between sessions and access your earnings calendar.
-              </p>
+            <div className="mb-6 bg-slate-900 border border-white/8 rounded-2xl overflow-hidden">
+              <div className="grid grid-cols-2 divide-x divide-white/5">
+
+                {/* Free tier */}
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">Free</span>
+                    <span className="text-xs text-slate-600 font-medium">always</span>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {[
+                      'Unlimited stock cards',
+                      'AI thesis & catalyst',
+                      'Analyst consensus',
+                      'Live price + chart',
+                      'Save your watchlist',
+                      'Earnings calendar',
+                    ].map(f => (
+                      <li key={f} className="flex items-start gap-2 text-xs text-slate-400">
+                        <span className="text-emerald-500 mt-0.5 shrink-0">✓</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
+                    className="mt-5 w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-semibold py-2.5 rounded-xl transition-all"
+                  >
+                    Sign up free →
+                  </button>
+                </div>
+
+                {/* Pro tier */}
+                <div className="p-5 bg-emerald-500/5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Pro</span>
+                    <span className="text-xs text-slate-600 font-medium">+ everything in Free</span>
+                  </div>
+                  <ul className="space-y-3">
+                    {[
+                      { text: 'Thesis change alerts', sub: 'Email when thesis flips' },
+                      { text: 'Daily stock brief', sub: 'Your watchlist, delivered' },
+                      { text: 'Alert watchlist', sub: 'Track up to 20 stocks' },
+                    ].map(f => (
+                      <li key={f.text} className="flex items-start gap-2">
+                        <span className="text-emerald-400 mt-0.5 shrink-0 text-xs">✦</span>
+                        <div>
+                          <p className="text-xs text-slate-200 font-medium">{f.text}</p>
+                          <p className="text-xs text-slate-500">{f.sub}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
+                    className="mt-5 w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-2.5 rounded-xl transition-all"
+                  >
+                    Get thesis alerts →
+                  </button>
+                  <p className="text-center text-slate-600 text-[11px] mt-2">Sign up first, upgrade in settings</p>
+                </div>
+
+              </div>
             </div>
           )}
 
@@ -1054,26 +1111,37 @@ function MyStocksContent() {
                 </div>
               )}
 
-              {/* Sign-up prompt */}
+              {/* Sign-up prompt — shown below cards for unregistered users */}
               {!user && allLoaded && !showAuthForm && (
-                <div className="bg-slate-900 border border-emerald-500/20 rounded-2xl p-6 text-center">
-                  <p className="text-white font-semibold mb-1">Save your stocks and come back tomorrow</p>
-                  <p className="text-slate-500 text-sm mb-5">
-                    Create a free account to save your list, track your portfolio, and access your earnings calendar — all in one place.
-                  </p>
-                  <div className="flex items-center justify-center gap-3 flex-wrap">
-                    <button
-                      onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
-                      className="bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-6 py-2.5 rounded-xl text-sm transition-all"
-                    >
-                      Sign up free →
-                    </button>
-                    <button
-                      onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
-                      className="text-slate-500 hover:text-white text-sm transition-colors"
-                    >
-                      Already have an account
-                    </button>
+                <div className="bg-slate-900 border border-white/8 rounded-2xl overflow-hidden">
+                  <div className="grid grid-cols-2 divide-x divide-white/5">
+                    <div className="p-5">
+                      <p className="text-white font-semibold text-sm mb-1">Save this and come back</p>
+                      <p className="text-slate-500 text-xs mb-4 leading-relaxed">Free account — save your list, watchlist chips, and earnings calendar.</p>
+                      <button
+                        onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
+                        className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-semibold py-2.5 rounded-xl transition-all"
+                      >
+                        Sign up free →
+                      </button>
+                      <button
+                        onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
+                        className="w-full text-slate-600 hover:text-slate-400 text-xs mt-2 transition-colors"
+                      >
+                        Already have an account
+                      </button>
+                    </div>
+                    <div className="p-5 bg-emerald-500/5">
+                      <p className="text-emerald-400 font-semibold text-sm mb-1">Get thesis alerts <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 ml-1">Pro</span></p>
+                      <p className="text-slate-500 text-xs mb-4 leading-relaxed">Know the moment a thesis flips 🟢→🔴. Daily email brief included.</p>
+                      <button
+                        onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
+                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-2.5 rounded-xl transition-all"
+                      >
+                        Get Pro →
+                      </button>
+                      <p className="text-center text-slate-600 text-[11px] mt-2">Sign up first, upgrade in settings</p>
+                    </div>
                   </div>
                 </div>
               )}

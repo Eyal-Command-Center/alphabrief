@@ -263,7 +263,7 @@ export default function LandingClient() {
                 AlphaBrief monitors your watchlist every trading day. The moment a stock shifts from positive to negative — or back — you get an email. Know before the market prices it in.
               </p>
               <button
-                onClick={() => router.push('/app')}
+                onClick={() => setShowAuth(true)}
                 className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-5 py-3 rounded-xl transition-all text-sm"
               >
                 Get thesis alerts →
