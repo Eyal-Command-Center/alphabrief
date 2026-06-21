@@ -70,13 +70,15 @@ export async function GET(req: Request) {
     : 'No earnings found in next 30 days'
 
   const eps = metrics?.metric?.epsBasicExclExtraTTM
-  const isProfitable = eps !== null && eps !== undefined && eps > 0
   const peValue = metrics?.metric?.peBasicExclExtraTTM
-  const peDisplay = isProfitable && peValue && peValue > 0 ? peValue.toFixed(1) : null
+  // Profitable if EPS > 0 OR P/E > 0 (P/E is more reliable for large caps)
+  const isProfitable = (eps != null && eps > 0) || (peValue != null && peValue > 0)
+  const peDisplay = peValue && peValue > 0 ? peValue.toFixed(1) : null
 
-  const prompt = `You are a sharp equity analyst writing for a retail investor. Given this data on ${safeSymbol} (${profile.name ?? safeSymbol}), return a JSON object with exactly these three fields:
+  const prompt = `You are a sharp equity analyst writing for a retail investor. Given this data on ${safeSymbol} (${profile.name ?? safeSymbol}), return a JSON object with exactly these four fields:
 
 {
+  "about": "One sentence on what this company actually does — in plain English, not just the industry label. E.g. 'Operates the world's largest e-commerce marketplace and cloud infrastructure platform (AWS).' Be specific.",
   "quickTake": "2-3 sentences on the stock's current situation — price action, what's driving it, anything worth flagging. Use ⚠️ for risks, ✅ for positives.",
   "thesis": "Start with exactly one of: 🟢 Positive, 🔴 Negative, or 🟡 No change — then one sentence on the fundamental story and whether anything is shifting.",
   "catalyst": "One sentence on the next key event. Use the earnings data provided. If nothing notable: 'Nothing notable until next earnings.'"
@@ -101,13 +103,13 @@ Rules:
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 400,
+    max_tokens: 500,
     messages: [{ role: 'user', content: prompt }],
   })
 
   const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
-  let parsed = { quickTake: '', thesis: '', catalyst: '' }
+  let parsed = { about: '', quickTake: '', thesis: '', catalyst: '' }
   try {
     parsed = JSON.parse(cleaned)
   } catch {
@@ -118,7 +120,7 @@ Rules:
     symbol: safeSymbol,
     name: profile.name ?? safeSymbol,
     sector: profile.finnhubIndustry ?? '',
-    description: profile.description ?? '',
+    description: parsed.about || profile.description || '',
     logo: profile.logo ?? '',
     price: quote.c,
     change: quote.dp,
