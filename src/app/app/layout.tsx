@@ -18,5 +18,14 @@ export const metadata: Metadata = {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return (
+    <>
+      {children}
+      <footer className="border-t border-white/5 px-6 py-4 flex items-center justify-center gap-6 mt-auto">
+        <a href="/privacy" className="text-slate-700 hover:text-slate-500 text-xs transition-colors">Privacy Policy</a>
+        <span className="text-slate-800 text-xs">·</span>
+        <a href="/terms" className="text-slate-700 hover:text-slate-500 text-xs transition-colors">Terms of Service</a>
+      </footer>
+    </>
+  )
 }
