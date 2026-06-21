@@ -258,6 +258,68 @@ function MiniChart({ symbol }: { symbol: string }) {
   )
 }
 
+function ExampleCard() {
+  return (
+    <div className="mb-6 bg-slate-900 border border-white/8 rounded-2xl overflow-hidden">
+      <div className="p-5">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center shrink-0">
+              <span className="text-white font-bold text-sm">N</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 font-bold text-lg">NVDA</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-500/20">Bullish</span>
+              </div>
+              <p className="text-slate-400 text-xs">NVIDIA Corporation</p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-white font-bold text-xl">$138.07</p>
+            <p className="text-emerald-400 text-sm font-medium">+2.4% today</p>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">AI Thesis</p>
+          <p className="text-slate-300 text-sm leading-relaxed">Data-center demand keeps outrunning supply; the Blackwell ramp is the swing factor for FY26 margins.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-slate-800/50 border border-white/5 rounded-xl p-3">
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1">Next Catalyst</p>
+            <p className="text-white text-sm font-semibold">Q3 Earnings</p>
+            <p className="text-slate-500 text-xs mt-0.5">Nov 20 · in 12 days</p>
+          </div>
+          <div className="bg-slate-800/50 border border-white/5 rounded-xl p-3">
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1">Analyst Consensus</p>
+            <p className="text-white text-sm font-semibold">Strong Buy</p>
+            <p className="text-slate-500 text-xs mt-0.5">$165 avg target · +19%</p>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-2">Moving the Stock</p>
+          <ul className="space-y-1.5">
+            <li className="flex items-start gap-2 text-sm text-slate-300">
+              <span className="text-emerald-500 shrink-0 mt-1 text-[8px]">●</span>
+              Blackwell production on track, CFO says
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-400">
+              <span className="text-slate-600 shrink-0 mt-1 text-[8px]">●</span>
+              Hyperscalers lift 2026 capex guidance
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div className="border-t border-white/5 px-5 py-2.5">
+        <span className="text-[10px] text-slate-600 uppercase tracking-widest">Example — search any ticker above to see a live brief</span>
+      </div>
+    </div>
+  )
+}
+
 function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: number; change: number } }) {
   if (card.loading) {
     return (
@@ -745,8 +807,8 @@ function MyStocksContent() {
     return data
   }
 
-  async function generateAll() {
-    const tickerList = tickers.toUpperCase().split(',').map(t => t.trim()).filter(Boolean)
+  async function generateAll(directTicker?: string) {
+    const tickerList = (directTicker ?? tickers).toUpperCase().split(',').map(t => t.trim()).filter(Boolean)
     if (!tickerList.length) return
 
     if (user) {
@@ -865,19 +927,33 @@ function MyStocksContent() {
 
           {/* Hero title */}
           {!hasCards && (
-            <div className="mb-6">
-              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">
-                Your stocks, <span className="text-emerald-400">at a glance.</span>
-              </h2>
-              <p className="text-slate-500 text-sm">
-                Add tickers and get an instant snapshot — price, thesis, catalyst, and news.
-              </p>
+            <div className={!user ? 'mb-7' : 'mb-6'}>
+              {!user ? (
+                <>
+                  <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white leading-tight mb-3">
+                    Your stocks,{' '}
+                    <span className="text-emerald-400">at a glance.</span>
+                  </h2>
+                  <p className="text-slate-400 text-base md:text-lg leading-relaxed">
+                    Type a ticker — get an instant brief: price, the bull/bear thesis, next catalyst, and the news that moves it.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">
+                    Your stocks, <span className="text-emerald-400">at a glance.</span>
+                  </h2>
+                  <p className="text-slate-500 text-sm">
+                    Add tickers and get an instant snapshot — price, thesis, catalyst, and news.
+                  </p>
+                </>
+              )}
             </div>
           )}
 
           {/* Search bar — hidden when cards are showing */}
           {!hasCards && (
-            <div className="mb-4" ref={searchRef}>
+            <div className="mb-3" ref={searchRef}>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <input
@@ -885,7 +961,11 @@ function MyStocksContent() {
                     value={tickers}
                     onChange={(e) => handleTickerInput(e.target.value)}
                     placeholder="Ticker or company name, e.g. AAPL, Apple..."
-                    className="w-full bg-slate-900 border border-white/8 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/60 text-sm transition-colors"
+                    className={`w-full bg-slate-900 text-white placeholder-slate-500 focus:outline-none transition-colors ${
+                      !user
+                        ? 'border-2 border-white/15 hover:border-white/25 focus:border-emerald-500/70 rounded-2xl px-5 py-4 text-base'
+                        : 'border border-white/8 focus:border-emerald-500/60 rounded-xl px-4 py-3 text-sm placeholder-slate-600'
+                    }`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         if (showSuggestions && suggestions.length > 0) {
@@ -917,7 +997,11 @@ function MyStocksContent() {
                 <button
                   onClick={() => { setShowSuggestions(false); generateAll() }}
                   disabled={isLoading || !tickers.trim()}
-                  className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-900 disabled:text-slate-700 disabled:border disabled:border-white/5 text-black font-semibold px-5 py-3 rounded-xl transition-all text-sm whitespace-nowrap"
+                  className={`bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-900 disabled:text-slate-700 disabled:border disabled:border-white/5 text-black font-bold transition-all whitespace-nowrap ${
+                    !user
+                      ? 'px-7 py-4 rounded-2xl text-base'
+                      : 'px-5 py-3 rounded-xl text-sm font-semibold'
+                  }`}
                 >
                   {isLoading ? (
                     <span className="flex items-center gap-2">
@@ -927,6 +1011,22 @@ function MyStocksContent() {
                   ) : 'Generate →'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Quick-start chips — unregistered empty state only */}
+          {!hasCards && !user && (
+            <div className="flex items-center gap-2 flex-wrap mb-8">
+              <span className="text-slate-500 text-sm">Don&apos;t know where to start — try one:</span>
+              {['NVDA', 'AAPL', 'TSLA', 'AMD'].map(sym => (
+                <button
+                  key={sym}
+                  onClick={() => { setTickers(sym); generateAll(sym) }}
+                  className="text-sm font-semibold px-3 py-1 rounded-full border border-white/15 text-white hover:border-emerald-500/40 hover:text-emerald-300 transition-all"
+                >
+                  {sym}
+                </button>
+              ))}
             </div>
           )}
 
@@ -966,6 +1066,9 @@ function MyStocksContent() {
             </div>
           )}
 
+          {/* Example card — unregistered empty state only */}
+          {!hasCards && !user && <ExampleCard />}
+
           {/* Value ladder — unregistered users, before any card is generated */}
           {!hasCards && !user && (
             <div className="mb-6 bg-slate-900 border border-white/8 rounded-2xl overflow-hidden">
@@ -977,7 +1080,7 @@ function MyStocksContent() {
                     <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">Free</span>
                     <span className="text-xs text-slate-600 font-medium">always</span>
                   </div>
-                  <ul className="space-y-2.5 flex-1">
+                  <ul className="space-y-2.5">
                     {[
                       'Unlimited stock cards',
                       'AI thesis & catalyst',
@@ -992,12 +1095,6 @@ function MyStocksContent() {
                       </li>
                     ))}
                   </ul>
-                  <button
-                    onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
-                    className="mt-5 w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-semibold py-2.5 rounded-xl transition-all"
-                  >
-                    Sign up free →
-                  </button>
                 </div>
 
                 {/* Pro tier */}
@@ -1006,7 +1103,7 @@ function MyStocksContent() {
                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Pro</span>
                     <span className="text-xs text-slate-600 font-medium">+ everything in Free</span>
                   </div>
-                  <ul className="space-y-2.5 flex-1">
+                  <ul className="space-y-2.5">
                     {[
                       { icon: '⚡', text: 'Thesis alerts', sub: 'Email the moment a thesis flips 🟢→🔴 (up to 10 tickers)' },
                       { icon: '📬', text: 'Daily / weekly digest', sub: 'Your watchlist delivered to your inbox' },
@@ -1020,15 +1117,19 @@ function MyStocksContent() {
                       </li>
                     ))}
                   </ul>
-                  <p className="text-center text-slate-600 text-[11px] mt-5">Sign up first, upgrade in settings</p>
-                  <button
-                    onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
-                    className="mt-2 w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-2.5 rounded-xl transition-all"
-                  >
-                    Get thesis alerts →
-                  </button>
                 </div>
 
+              </div>
+
+              {/* Single CTA */}
+              <div className="px-5 pt-4 pb-5 border-t border-white/5">
+                <button
+                  onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-3 rounded-xl transition-all"
+                >
+                  Sign up free →
+                </button>
+                <p className="text-center text-slate-600 text-[11px] mt-2">Start free — upgrade to Pro later in Settings.</p>
               </div>
             </div>
           )}
@@ -1116,31 +1217,21 @@ function MyStocksContent() {
                   <div className="grid grid-cols-2 divide-x divide-white/5">
                     <div className="p-5">
                       <p className="text-white font-semibold text-sm mb-1">Save this and come back</p>
-                      <p className="text-slate-500 text-xs mb-4 leading-relaxed">Free account — save your list, watchlist chips, and earnings calendar.</p>
-                      <button
-                        onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
-                        className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-semibold py-2.5 rounded-xl transition-all"
-                      >
-                        Sign up free →
-                      </button>
-                      <button
-                        onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
-                        className="w-full text-slate-600 hover:text-slate-400 text-xs mt-2 transition-colors"
-                      >
-                        Already have an account
-                      </button>
+                      <p className="text-slate-500 text-xs leading-relaxed">Free account — save your list, watchlist chips, and earnings calendar.</p>
                     </div>
                     <div className="p-5 bg-emerald-500/5">
                       <p className="text-emerald-400 font-semibold text-sm mb-1">Get thesis alerts <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 ml-1">Pro</span></p>
-                      <p className="text-slate-500 text-xs mb-4 leading-relaxed">Know the moment a thesis flips 🟢→🔴. Daily email brief included.</p>
-                      <button
-                        onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
-                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-2.5 rounded-xl transition-all"
-                      >
-                        Get Pro →
-                      </button>
-                      <p className="text-center text-slate-600 text-[11px] mt-2">Sign up first, upgrade in settings</p>
+                      <p className="text-slate-500 text-xs leading-relaxed">Know the moment a thesis flips 🟢→🔴. Daily email brief included.</p>
                     </div>
+                  </div>
+                  <div className="px-5 pt-4 pb-5 border-t border-white/5">
+                    <button
+                      onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
+                      className="w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-3 rounded-xl transition-all"
+                    >
+                      Sign up free →
+                    </button>
+                    <p className="text-center text-slate-600 text-[11px] mt-2">Start free — upgrade to Pro later in Settings.</p>
                   </div>
                 </div>
               )}
