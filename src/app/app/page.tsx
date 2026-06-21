@@ -1122,14 +1122,14 @@ function MyStocksContent() {
               </div>
 
               {/* Single CTA */}
-              <div className="px-5 pt-4 pb-5 border-t border-white/5">
+              <div className="px-5 pt-4 pb-5 border-t border-white/5 flex items-center gap-4">
                 <button
                   onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-3 rounded-xl transition-all"
+                  className="shrink-0 bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold px-6 py-3 rounded-2xl transition-all"
                 >
                   Sign up free →
                 </button>
-                <p className="text-center text-slate-600 text-[11px] mt-2">Start free — upgrade to Pro later in Settings.</p>
+                <p className="text-slate-500 text-sm">Start free — upgrade to Pro later in Settings.</p>
               </div>
             </div>
           )}
