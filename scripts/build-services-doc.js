@@ -1,460 +1,332 @@
-/**
- * AlphaBrief — Services & Infrastructure Reference Doc Generator
- *
- * Run:  node scripts/build-services-doc.js
- * Or:   npm run docs
- *
- * Output: AlphaBrief-Services-Reference.docx (repo root)
- *
- * MAINTENANCE INSTRUCTIONS FOR CLAUDE:
- * ─────────────────────────────────────────────────────────────────────────────
- * This script is the source of truth for the services reference document.
- * Whenever you make any of the following changes to AlphaBrief, you MUST
- * update this script AND regenerate the doc (npm run docs):
- *
- *   • Adding a new external service or API → add a new h2() section in part 2
- *   • Adding a new environment variable → add a row to the envTable() in part 3
- *   • Adding a new API route → add a row to the table in part 4
- *   • Changing a model, cron schedule, or billing plan → update the relevant section
- *   • Any architecture change (new data flow, new caching layer, etc.) → update part 5
- *   • Any new billing / free-tier concern → add a row to the billing table in part 6
- *
- * The GitHub Action (.github/workflows/update-docs.yml) runs this script on
- * every push to main and commits the updated .docx back to the repo automatically.
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
+// AlphaBrief Services Reference — document generator
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
-  LevelFormat, PageNumber, Header, Footer
-} = require('docx');
+  AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
+  LevelFormat, Header, Footer, PageNumber
+} = require('./node_modules/docx');
 const fs = require('fs');
-const path = require('path');
 
-// ── colour palette ─────────────────────────────────────────────────────────────
-const ACCENT  = '10B981';
-const DARK    = '0F172A';
-const MID     = '334155';
-const LIGHT   = '94A3B8';
-const BG_HEAD = 'E8F5EF';
-const BG_WARN = 'FEF9C3';
-
-// ── helpers ────────────────────────────────────────────────────────────────────
-const border  = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
-const borders = { top: border, bottom: border, left: border, right: border };
+const UPDATED = 'June 21, 2026';
+const BORDER = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
+const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 
 function h1(text) {
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
-    spacing: { before: 400, after: 120 },
-    children: [new TextRun({ text, font: 'Arial', size: 30, bold: true, color: DARK })],
+    spacing: { before: 320, after: 160 },
+    children: [new TextRun({ text, bold: true, size: 28, font: 'Arial' })]
   });
 }
 function h2(text) {
   return new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: 300, after: 100 },
-    children: [new TextRun({ text, font: 'Arial', size: 26, bold: true, color: MID })],
+    spacing: { before: 200, after: 100 },
+    children: [new TextRun({ text, bold: true, size: 22, font: 'Arial', color: '2C3E50' })]
   });
 }
-function h3(text) {
+function p(text) {
+  return new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text, font: 'Arial', size: 20 })] });
+}
+function mixed(...runs) {
   return new Paragraph({
-    heading: HeadingLevel.HEADING_3,
-    spacing: { before: 200, after: 80 },
-    children: [new TextRun({ text, font: 'Arial', size: 22, bold: true, color: ACCENT })],
+    spacing: { after: 120 },
+    children: runs.map(r => typeof r === 'string' ? new TextRun({ text: r, font: 'Arial', size: 20 }) : new TextRun({ font: 'Arial', size: 20, ...r }))
   });
 }
-function body(text, opts = {}) {
+function bullet(text, opts = {}) {
   return new Paragraph({
-    spacing: { before: 60, after: 60 },
-    children: [new TextRun({ text, font: 'Arial', size: 22, color: opts.color || DARK, bold: opts.bold || false })],
+    numbering: { reference: 'bullets', level: 0 },
+    spacing: { after: 80 },
+    children: [new TextRun({ text, font: 'Arial', size: 20, ...opts })]
   });
 }
-function warn(text) {
-  return new Paragraph({
-    spacing: { before: 80, after: 80 },
-    indent: { left: 360 },
-    children: [
-      new TextRun({ text: '⚠️  ', font: 'Arial', size: 22 }),
-      new TextRun({ text, font: 'Arial', size: 22, color: 'B45309', bold: true }),
-    ],
-  });
+function gap() { return new Paragraph({ spacing: { after: 80 }, children: [new TextRun('')] }); }
+
+function hCell(text, w, bg = '2C3E50') {
+  return new TableCell({ borders: BORDERS, width: { size: w, type: WidthType.DXA }, shading: { fill: bg, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: 'FFFFFF', font: 'Arial', size: 18 })] })] });
 }
-function bullet(text, sub = false) {
-  return new Paragraph({
-    spacing: { before: 40, after: 40 },
-    indent: { left: sub ? 900 : 540, hanging: 360 },
-    children: [new TextRun({ text: (sub ? '◦  ' : '•  ') + text, font: 'Arial', size: 22, color: DARK })],
-  });
+function bCell(text, w, shade) {
+  return new TableCell({ borders: BORDERS, width: { size: w, type: WidthType.DXA }, shading: { fill: shade ? 'F5F5F5' : 'FFFFFF', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [new Paragraph({ children: [new TextRun({ text, font: 'Arial', size: 18 })] })] });
 }
-function mono(text) {
-  return new TextRun({ text, font: 'Courier New', size: 20, color: ACCENT });
-}
-function spacer() {
-  return new Paragraph({ spacing: { before: 120, after: 120 }, children: [] });
-}
-function divider() {
-  return new Paragraph({
-    spacing: { before: 200, after: 200 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0', space: 1 } },
-    children: [],
-  });
+function mCell(text, w, shade) {
+  return new TableCell({ borders: BORDERS, width: { size: w, type: WidthType.DXA }, shading: { fill: shade ? 'F5F5F5' : 'FFFFFF', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [new Paragraph({ children: [new TextRun({ text, font: 'Courier New', size: 18 })] })] });
 }
 
-function makeTable(colWidths, headerCells, dataRows) {
-  const headerRow = new TableRow({
-    tableHeader: true,
-    children: headerCells.map((h, i) =>
-      new TableCell({
-        borders,
-        width: { size: colWidths[i], type: WidthType.DXA },
-        shading: { fill: BG_HEAD, type: ShadingType.CLEAR },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: h, font: 'Arial', size: 20, bold: true, color: MID })] })],
-      })
-    ),
-  });
-
-  const rows = dataRows.map(({ cells, highlight, monoCol }) =>
-    new TableRow({
-      children: cells.map((cell, i) =>
-        new TableCell({
-          borders,
-          width: { size: colWidths[i], type: WidthType.DXA },
-          shading: { fill: highlight ? BG_WARN : 'FFFFFF', type: ShadingType.CLEAR },
-          margins: { top: 80, bottom: 80, left: 120, right: 120 },
-          children: [new Paragraph({
-            children: [(monoCol !== undefined && i === monoCol)
-              ? mono(cell)
-              : new TextRun({ text: cell, font: 'Arial', size: 20, color: highlight ? 'B45309' : DARK })],
-          })],
-        })
-      ),
-    })
-  );
-
+function makeTable(cols, rows) {
+  const widths = cols.map(c => c.w);
+  const total = widths.reduce((a,b) => a+b, 0);
   return new Table({
-    width: { size: 9360, type: WidthType.DXA },
-    columnWidths: colWidths,
-    rows: [headerRow, ...rows],
+    width: { size: total, type: WidthType.DXA },
+    columnWidths: widths,
+    rows: [
+      new TableRow({ children: cols.map(c => hCell(c.label, c.w)) }),
+      ...rows.map((row, ri) => new TableRow({
+        children: cols.map((c, ci) => c.mono ? mCell(row[ci], c.w, ri%2===0) : bCell(row[ci], c.w, ri%2===0))
+      }))
+    ]
   });
 }
 
-// ── auto-stamp last-modified from git ─────────────────────────────────────────
-function getLastModified() {
-  try {
-    const { execSync } = require('child_process');
-    const hash = execSync('git rev-parse --short HEAD').toString().trim();
-    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    return `${date}  ·  commit ${hash}`;
-  } catch {
-    return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  }
-}
+// Data
+const overviewData = [
+  ['Product', 'AlphaBrief — AI-powered stock research tool'],
+  ['URL', 'alphabrief.io'],
+  ['Owner', 'Eyal Gilad (geyalm@gmail.com)'],
+  ['Document updated', UPDATED],
+  ['Stack', 'Next.js App Router, React, TypeScript, Tailwind CSS v4'],
+  ['Hosting', 'Vercel (hosting + cron jobs)'],
+  ['Database / Auth', 'Supabase (PostgreSQL + Row-Level Security + SSR Auth)'],
+  ['Repo', 'Private GitHub — push via: cd ~/Desktop/alphabrief && git push'],
+];
 
-// ══════════════════════════════════════════════════════════════════════════════
-// DOCUMENT CONTENT — update this section when infrastructure changes
-// ══════════════════════════════════════════════════════════════════════════════
-const lastModified = getLastModified();
+const services = [
+  ['Supabase', 'Authentication (SSR + Google OAuth) and PostgreSQL database hosting', 'Free tier', 'RLS enabled. Service role key NEVER exposed client-side. Google OAuth domain: alphabrief.io.'],
+  ['Anthropic Claude', 'AI-generated stock analysis: about, quickTake, thesis, catalystEvent, catalystDriver', 'Pay-per-use API', 'Model: claude-haiku-4-5-20251001. Max 500 tokens per card. Returns JSON only (no markdown fences).'],
+  ['Finnhub', 'Stock market data: company profile, quote, metrics, analyst recs, news, earnings, peers', 'Free tier', '7 parallel requests per card. US ticker filter applied. Symbol sanitized before every call.'],
+  ['Massive.com (ex-Polygon.io)', 'Historical daily candles (chart) and live price snapshots', 'Free tier', 'api.polygon.io still resolves. Free plan: candles + snapshots only. Fundamentals require paid add-on ($29/mo) — NOT used.'],
+  ['Lemon Squeezy', 'Subscription billing and payments for AlphaBrief Pro', 'Revenue-share (5%)', 'Pro variant ID: 1816532. Webhook via HMAC-SHA256 + crypto.timingSafeEqual. Handles checkout, cancel, subscription lifecycle.'],
+  ['Resend', 'Transactional email: thesis-change alerts and daily/weekly brief emails', 'Free tier (100/day)', 'From: noreply@alphabrief.io. Used by /api/cron/thesis-alerts and /api/cron/email-report.'],
+  ['Vercel', 'Next.js hosting, edge network, and cron job execution', 'Pro plan', 'Cron routes protected by CRON_SECRET. Deploy on push to main.'],
+];
 
+const envVars = [
+  ['ANTHROPIC_API_KEY', 'Anthropic', 'Server-side only. Used in /api/screener/detail.'],
+  ['MASSIVE_API_KEY', 'Massive.com', 'Server-side only. Used in /api/chart and /api/prices.'],
+  ['FINNHUB_API_KEY', 'Finnhub', 'Server-side only. Used in /api/screener/detail, /api/search, /api/earnings, /api/ipos.'],
+  ['RESEND_API_KEY', 'Resend', 'Server-side only. Used in /api/cron/ routes.'],
+  ['NEXT_PUBLIC_SUPABASE_URL', 'Supabase', 'Public — safe in client bundle.'],
+  ['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'Supabase', 'Public — safe in client bundle. RLS enforces row access.'],
+  ['SUPABASE_SERVICE_ROLE_KEY', 'Supabase', 'NEVER expose client-side. Admin ops only in server routes.'],
+  ['LEMONSQUEEZY_API_KEY', 'Lemon Squeezy', 'Server-side only. Used in /api/lemon/checkout and /api/lemon/cancel.'],
+  ['LEMONSQUEEZY_WEBHOOK_SECRET', 'Lemon Squeezy', 'HMAC-SHA256 webhook signature verification.'],
+  ['LEMONSQUEEZY_VARIANT_ID', 'Lemon Squeezy', 'Pro plan variant ID: 1816532.'],
+  ['CRON_SECRET', 'Internal', 'Bearer token protecting cron routes from unauthorized execution.'],
+];
+
+const dbTables = [
+  ['portfolios', 'user_id, tickers (text[]), updated_at', 'Saved watchlist tickers per user.', 'Updated on every watchlist save.'],
+  ['brief_feedback', 'symbol, user_id (nullable), rating (up|down)', 'Thumbs feedback on stock cards.', "WARNING: named brief_feedback, NOT feedback. user_id nullable — guests can submit."],
+  ['profiles', 'id, is_pro, email_enabled, email_frequency, ls_customer_id, ls_subscription_id', 'User profile and subscription status.', 'Populated by Lemon Squeezy webhook. is_pro gates Pro features. ls_* fields store LS IDs.'],
+  ['alert_tickers', 'user_id, tickers (text[])', 'Tickers for Pro thesis-change email alerts.', 'Read by /api/cron/thesis-alerts daily.'],
+  ['thesis_history', 'user_id, symbol, thesis, checked_at', 'Last thesis per user per ticker for change detection.', 'Cron compares new thesis to stored. Polarity flip triggers email alert.'],
+];
+
+const routes = [
+  ['/api/screener/detail', 'GET', 'None', 'Main stock card. 7 Finnhub reqs parallel + Claude Haiku. 20-min server cache.'],
+  ['/api/search', 'GET', 'None', 'Ticker search/autocomplete via Finnhub.'],
+  ['/api/chart', 'GET', 'None', '3M candles + EMA 200 from Massive. Fetches 2Y, trims to last 63 days. 1hr cache.'],
+  ['/api/prices', 'GET', 'None', 'Live price snapshot from Massive. Market hours only (Mon-Fri 13:30-21:00 UTC). no-store.'],
+  ['/api/feedback', 'POST', 'Optional', 'Inserts into brief_feedback. Works for unauthenticated guests.'],
+  ['/api/brief', 'POST', 'Required', 'Batch brief generation. Requires Supabase session.'],
+  ['/api/email-prefs', 'GET/POST', 'Required', 'Read/write user email preferences (enabled, frequency).'],
+  ['/api/alert-tickers', 'GET/POST', 'Required', 'Read/write Pro user thesis alert watchlist.'],
+  ['/api/earnings', 'GET', 'None', 'Earnings calendar data from Finnhub.'],
+  ['/api/macro', 'GET', 'None', 'Macro economic indicators.'],
+  ['/api/sectors/detail', 'GET', 'None', 'Sector-level data and performance.'],
+  ['/api/ipos', 'GET', 'None', 'IPO pipeline from Finnhub.'],
+  ['/api/lemon/checkout', 'POST', 'Required', 'Creates Lemon Squeezy checkout session for Pro upgrade.'],
+  ['/api/lemon/cancel', 'POST', 'Required', 'Cancels active Lemon Squeezy subscription.'],
+  ['/api/lemon/webhook', 'POST', 'HMAC-SHA256', 'Lemon Squeezy lifecycle events. Updates profiles table. Timing-safe compare.'],
+  ['/api/promo/redeem', 'POST', 'Required', 'Redeems promo code. Input max 50 chars.'],
+  ['/api/cron/thesis-alerts', 'GET', 'CRON_SECRET', 'Daily: checks thesis for each alert ticker, emails user if polarity flipped.'],
+  ['/api/cron/email-report', 'GET', 'CRON_SECRET', 'Daily/weekly: sends personalized portfolio email brief via Resend.'],
+  ['/api/waitlist', 'POST', 'None', 'Captures waitlist signups. Stores in Supabase.'],
+];
+
+const arch = [
+  ['Stock card pipeline', '7 Finnhub endpoints fetched in parallel per card: profile2, quote, metrics, recommendations, news, earnings, peers. Claude Haiku generates 5 AI fields. 20-min in-memory server cache.'],
+  ['isProfitable logic', '(eps > 0) || (peValue > 0). P/E is more reliable than EPS for large caps like Amazon.'],
+  ['Peers filter', 'US-listed only: /^[A-Z]{1,5}$/ or /^[A-Z]{1,4}\\.[A-Z]$/. Blocks .TO, .AX, .L etc.'],
+  ['Symbol sanitization', 'Applied before every API call: /^[A-Z0-9.\\-]{1,10}$/. Rejects anything outside this pattern.'],
+  ['Chart / EMA 200', 'Fetches 2Y candles (limit=750) for EMA warm-up. k = 2/(N+1). Seeds with SMA of first 200. Displays last 63 days (3M).'],
+  ['Live prices', 'Massive snapshot polled every 10s during market hours. Check: Mon-Fri 13:30-21:00 UTC. Green pulsing dot + "Live" nav indicator.'],
+  ['Client cache', 'localStorage key ab_stock_{SYMBOL} with 20-min TTL. Email prefs: ab_email_prefs. Clear manually to test fresh data.'],
+  ['Auth pattern', 'SSR auth via @supabase/ssr. Server: createServerClient + cookies(). Admin: createClient with service role key. Never expose service role key client-side.'],
+  ['Lemon Squeezy webhook', 'crypto.timingSafeEqual for HMAC-SHA256 (NOT ===). Hex comparison. Updates profiles on subscription events.'],
+  ['Thesis alert cron', 'Daily: reads alert_tickers, generates fresh thesis, compares to thesis_history. Polarity flip (positive<>negative) triggers Resend email.'],
+  ['Massive.com notes', 'Rebranded from Polygon.io Oct 2025. api.polygon.io still resolves. Free plan: candles + snapshots. Fundamentals need paid add-on.'],
+  ['Git workflow', 'Sandbox cannot push to GitHub. Always tell Eyal: cd ~/Desktop/alphabrief && git push. Lock fix: rm -f .git/HEAD.lock .git/index.lock.'],
+];
+
+const pages = [
+  ['/', 'src/app/page.tsx + LandingClient.tsx', 'Landing page. Hero, product card preview, thesis alerts callout, features, footer.'],
+  ['/app', 'src/app/app/page.tsx', 'My Stocks. Search, autocomplete, card generation, localStorage cache, watchlist.'],
+  ['/app/settings', 'src/app/app/settings/page.tsx', 'Settings: email prefs, Pro upgrade/cancel, promo codes, alert tickers.'],
+  ['/app/calendar', 'src/app/app/calendar/page.tsx', 'Earnings calendar.'],
+  ['/app/ipos', 'src/app/app/ipos/page.tsx', 'IPO pipeline.'],
+  ['/app/sectors', 'src/app/app/sectors/page.tsx', 'Sector view.'],
+  ['/privacy', 'src/app/privacy/page.tsx', 'Privacy Policy. Last updated June 2026.'],
+  ['/terms', 'src/app/terms/page.tsx', 'Terms of Service. Last updated June 2026.'],
+];
+
+const built = [
+  'Landing page: hero, product card preview, thesis alerts callout, features section, footer',
+  'My Stocks page: search, autocomplete, stock card generation, localStorage cache (20-min TTL), watchlist save',
+  'Try-before-register flow — ?t=TICKER works without login',
+  'Full stock cards: About (AI), metrics, 3M chart + EMA 200, Quick Take, analyst bar, Thesis Check, Catalyst, News, Peers, Share + Feedback',
+  'Settings page: email prefs, Pro upgrade/cancel, promo codes, alert tickers',
+  'Email report cron (weekly/daily brief via Resend)',
+  'Thesis alerts cron (daily polarity check, email on flip)',
+  'Earnings calendar, IPO pipeline, Sectors pages',
+  'Security: auth gate on /api/brief, symbol sanitization, timing-safe webhook HMAC',
+  'Privacy Policy + Terms of Service (June 2026)',
+  'Share links — copy /app?t=SYMBOL button on each card',
+  'Trend graph — 3M + EMA 200, Massive REST, pill-style toggle button',
+  'Live price polling — Massive snapshot, 10s interval, pulsing green dot + "Live" nav indicator',
+];
+
+const pending = [
+  'My Stocks unregistered state redesign — show free vs Pro value clearly',
+  'Thesis alerts placement — consider surfacing on My Stocks page, not just Settings',
+  'Cash flow data — Massive fundamentals API, requires paid add-on ($29/mo). Deferred.',
+  'Mobile UI pass — partially done, needs full review',
+];
+
+// Build document
 const doc = new Document({
+  numbering: {
+    config: [{
+      reference: 'bullets',
+      levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }]
+    }]
+  },
   styles: {
-    default: { document: { run: { font: 'Arial', size: 22 } } },
+    default: { document: { run: { font: 'Arial', size: 20 } } },
     paragraphStyles: [
-      { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true,
-        run: { size: 30, bold: true, font: 'Arial', color: DARK },
-        paragraph: { spacing: { before: 400, after: 120 }, outlineLevel: 0 } },
-      { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true,
-        run: { size: 26, bold: true, font: 'Arial', color: MID },
-        paragraph: { spacing: { before: 300, after: 100 }, outlineLevel: 1 } },
-      { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true,
-        run: { size: 22, bold: true, font: 'Arial', color: ACCENT },
-        paragraph: { spacing: { before: 200, after: 80 }, outlineLevel: 2 } },
-    ],
+      { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 32, bold: true, font: 'Arial', color: '1A1A2E' }, paragraph: { spacing: { before: 320, after: 160 }, outlineLevel: 0 } },
+      { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 26, bold: true, font: 'Arial', color: '2C3E50' }, paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 1 } },
+    ]
   },
   sections: [{
     properties: {
-      page: {
-        size: { width: 12240, height: 15840 },
-        margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-      },
+      page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1080, bottom: 1440, left: 1080 } }
     },
     headers: {
-      default: new Header({
-        children: [new Paragraph({
-          border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0', space: 4 } },
-          children: [
-            new TextRun({ text: 'AlphaBrief — Services & Infrastructure Reference', font: 'Arial', size: 18, color: LIGHT }),
-            new TextRun({ text: `\t${lastModified}`, font: 'Arial', size: 18, color: LIGHT }),
-          ],
-          tabStops: [{ type: 'right', position: 9360 }],
-        })],
-      }),
+      default: new Header({ children: [new Paragraph({
+        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '27AE60', space: 1 } },
+        spacing: { after: 120 },
+        children: [
+          new TextRun({ text: 'AlphaBrief — Services & Technical Reference', bold: true, font: 'Arial', size: 18, color: '2C3E50' }),
+          new TextRun({ text: '  |  CONFIDENTIAL', font: 'Arial', size: 16, color: '999999' }),
+        ]
+      })] })
     },
     footers: {
-      default: new Footer({
-        children: [new Paragraph({
-          alignment: AlignmentType.CENTER,
-          border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0', space: 4 } },
-          children: [
-            new TextRun({ text: 'Confidential — AlphaBrief internal reference  ·  Page ', font: 'Arial', size: 18, color: LIGHT }),
-            new TextRun({ children: [PageNumber.CURRENT], font: 'Arial', size: 18, color: LIGHT }),
-          ],
-        })],
-      }),
+      default: new Footer({ children: [new Paragraph({
+        border: { top: { style: BorderStyle.SINGLE, size: 2, color: 'CCCCCC', space: 1 } },
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: 80 },
+        children: [
+          new TextRun({ text: 'Updated ' + UPDATED + '  |  Page ', font: 'Arial', size: 16, color: '999999' }),
+          new TextRun({ children: [PageNumber.CURRENT], font: 'Arial', size: 16, color: '999999' }),
+        ]
+      })] })
     },
     children: [
+      // Title
+      new Paragraph({ spacing: { before: 0, after: 80 }, children: [new TextRun({ text: 'AlphaBrief', bold: true, font: 'Arial', size: 56, color: '1A1A2E' })] }),
+      new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: 'Services & Technical Reference', font: 'Arial', size: 32, color: '27AE60' })] }),
+      new Paragraph({ spacing: { after: 320 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '27AE60', space: 1 } }, children: [new TextRun({ text: 'Last updated: ' + UPDATED + '  |  CONFIDENTIAL — internal use only', font: 'Arial', size: 18, color: '888888' })] }),
+      gap(),
 
-      // ── TITLE ────────────────────────────────────────────────────────────────
-      new Paragraph({
-        spacing: { before: 0, after: 80 },
-        children: [
-          new TextRun({ text: 'α ', font: 'Georgia', size: 60, color: ACCENT }),
-          new TextRun({ text: 'Alpha', font: 'Arial', size: 60, bold: true, color: DARK }),
-          new TextRun({ text: 'Brief', font: 'Arial', size: 60, bold: true, color: ACCENT }),
-        ],
-      }),
-      new Paragraph({
-        spacing: { before: 0, after: 40 },
-        children: [new TextRun({ text: 'Services & Infrastructure Reference', font: 'Arial', size: 36, color: MID })],
-      }),
-      new Paragraph({
-        spacing: { before: 0, after: 60 },
-        children: [new TextRun({ text: `Auto-generated on push · ${lastModified}`, font: 'Arial', size: 20, color: LIGHT, italics: true })],
-      }),
-      divider(),
-
-      // ── 1. PROJECT OVERVIEW ───────────────────────────────────────────────────
+      // 1. Overview
       h1('1. Project Overview'),
-      body('AlphaBrief (alphabrief.io) is a Next.js 16 web app that gives retail investors instant AI-generated briefs on any stock ticker. Users can save a portfolio, view sector theses, track IPOs and earnings, and opt into daily or weekly email reports.'),
-      spacer(),
-      body('Tech stack:', { bold: true }),
-      bullet('Framework: Next.js 16.2.9 (App Router), React 19.2.4, TypeScript'),
-      bullet('Styling: Tailwind CSS v4'),
-      bullet('AI: @anthropic-ai/sdk ^0.104.2'),
-      bullet('Database / Auth: @supabase/supabase-js ^2.108.2'),
-      bullet('Email: resend ^6.14.0'),
-      spacer(),
-      bullet('Deployed at: https://alphabrief.io'),
-      bullet('Repo: Desktop/alphabrief — push to main triggers Vercel auto-deploy'),
-      divider(),
+      makeTable([{ label: 'Field', w: 2200 }, { label: 'Value', w: 7160 }], overviewData),
+      gap(),
 
-      // ── 2. EXTERNAL SERVICES ─────────────────────────────────────────────────
-      h1('2. External Services'),
+      // 2. Services
+      h1('2. External Services & Integrations'),
+      p('All credentials stored in .env.local — never commit this file.'),
+      gap(),
+      makeTable([
+        { label: 'Service', w: 1800 },
+        { label: 'Purpose', w: 3400 },
+        { label: 'Plan', w: 1200 },
+        { label: 'Notes', w: 2960 },
+      ], services),
+      gap(),
 
-      // 2.1 Vercel
-      h2('2.1  Vercel'),
-      body('Role: hosting, CI/CD, and cron scheduling.'),
-      bullet('Free Hobby plan. Auto-deploys from GitHub main branch.'),
-      bullet('Environment variables set in Vercel dashboard → Project Settings → Environment Variables.'),
-      bullet('Cron job fires every weekday at 13:00 UTC (9 am ET) to trigger email reports.'),
-      new Paragraph({
-        spacing: { before: 80, after: 80 },
-        indent: { left: 540 },
-        children: [mono('vercel.json → path: /api/cron/email-report   schedule: "0 13 * * 1-5"')],
-      }),
-      bullet('Cron endpoint protected by CRON_SECRET — Vercel passes it as Authorization: Bearer header.'),
-      spacer(),
+      // 3. Env vars
+      h1('3. Environment Variables (.env.local)'),
+      p('Set in Vercel dashboard (Settings > Environment Variables) for production deployments.'),
+      gap(),
+      makeTable([
+        { label: 'Variable', w: 3200, mono: true },
+        { label: 'Service', w: 1800 },
+        { label: 'Notes', w: 4360 },
+      ], envVars),
+      gap(),
 
-      // 2.2 Supabase
-      h2('2.2  Supabase'),
-      body('Role: PostgreSQL database and auth provider (email/password + Google OAuth).'),
-      bullet('Two clients: public anon key (browser, respects RLS) and service role key (server-only, bypasses RLS — used only in cron route).'),
-      bullet('OAuth redirect URL: https://alphabrief.io/auth/callback'),
-      spacer(),
-      body('Database schema — portfolios table:', { bold: true }),
-      makeTable(
-        [2000, 2000, 2000, 3360],
-        ['Column', 'Type', 'Default', 'Notes'],
-        [
-          { cells: ['user_id',        'uuid',    'auth.uid()',  'FK to auth.users — primary key'],         monoCol: 0 },
-          { cells: ['tickers',        'text[]',  'NULL',        'Array of saved ticker symbols'],           monoCol: 0 },
-          { cells: ['email_enabled',  'boolean', 'false',       'User opted in to email reports'],          monoCol: 0 },
-          { cells: ['email_frequency','text',    "'weekly'",    "'daily' or 'weekly'"],                    monoCol: 0 },
-          { cells: ['user_email',     'text',    'NULL',        'Cached from auth; used by cron to send'],  monoCol: 0 },
-        ]
-      ),
-      spacer(),
+      // 4. DB tables
+      h1('4. Supabase Database Tables'),
+      p('Row-Level Security (RLS) enabled on all tables. Service role key bypasses RLS — server-side only.'),
+      gap(),
+      makeTable([
+        { label: 'Table', w: 1800, mono: true },
+        { label: 'Columns', w: 2800, mono: true },
+        { label: 'Purpose', w: 2400 },
+        { label: 'Notes', w: 2360 },
+      ], dbTables),
+      gap(),
 
-      // 2.3 Finnhub
-      h2('2.3  Finnhub'),
-      body('Role: company-specific market data — quotes, news, earnings, IPO calendar, symbol search, company profiles.'),
-      bullet('Free tier: 60 API calls/minute. No credit card required.'),
-      bullet('Env var: FINNHUB_API_KEY  ·  Dashboard: finnhub.io'),
-      spacer(),
-      makeTable(
-        [3600, 5760],
-        ['Endpoint', 'Used For'],
-        [
-          { cells: ['/api/v1/quote',            'Live price & % change — briefs, sector cards, cron emails'],            monoCol: 0 },
-          { cells: ['/api/v1/company-news',      'Last 7 days of news for a symbol — briefs and sector analysis'],       monoCol: 0 },
-          { cells: ['/api/v1/calendar/earnings', 'Upcoming earnings dates + EPS estimates — briefs and calendar page'],   monoCol: 0 },
-          { cells: ['/api/v1/calendar/ipo',      'Recent (past 30d) and upcoming (next 60d) IPOs — IPO page'],           monoCol: 0 },
-          { cells: ['/api/v1/search',            'Ticker symbol autocomplete on landing and app pages'],                  monoCol: 0 },
-          { cells: ['/api/v1/stock/profile2',    'Company sector and market cap — used to enrich IPO entries'],          monoCol: 0 },
-        ]
-      ),
-      spacer(),
+      // 5. API routes
+      h1('5. API Routes'),
+      p('All under src/app/api/. "Required" auth = valid Supabase session. CRON_SECRET = Authorization: Bearer header.'),
+      gap(),
+      makeTable([
+        { label: 'Route', w: 2800, mono: true },
+        { label: 'Method', w: 900 },
+        { label: 'Auth', w: 1000 },
+        { label: 'Purpose', w: 4660 },
+      ], routes),
+      gap(),
 
-      // 2.4 Anthropic
-      h2('2.4  Anthropic Claude API'),
-      body('Role: AI engine — generates stock briefs and sector theses.'),
-      bullet('Env var: ANTHROPIC_API_KEY  ·  SDK: @anthropic-ai/sdk ^0.104.2  ·  Pay-as-you-go pricing.'),
-      spacer(),
-      makeTable(
-        [3000, 2500, 3860],
-        ['Model', 'Route', 'Purpose'],
-        [
-          { cells: ['claude-sonnet-4-5',         '/api/brief',           'Full portfolio morning brief — price action, news, catalyst, thesis check. max_tokens: 2048'],          monoCol: 0 },
-          { cells: ['claude-haiku-4-5-20251001', '/api/sectors/detail',  'Sector thesis JSON for all 7 sectors in one call. max_tokens: 2000. Cached 24h in-memory.'],           monoCol: 0 },
-        ]
-      ),
-      spacer(),
+      // 6. Architecture
+      h1('6. Architecture & Key Decisions'),
+      p('Critical implementation details and gotchas that must be preserved across sessions:'),
+      gap(),
+      makeTable([
+        { label: 'Topic', w: 2200 },
+        { label: 'Detail', w: 7160 },
+      ], arch),
+      gap(),
 
-      // 2.5 Resend
-      h2('2.5  Resend'),
-      body('Role: transactional email delivery for daily/weekly stock report emails.'),
-      bullet('Free tier: 3,000 emails/month, 100/day.'),
-      bullet('Env var: RESEND_API_KEY  ·  SDK: resend ^6.14.0  ·  Dashboard: resend.com'),
-      bullet('From address: AlphaBrief <briefs@alphabrief.io>'),
-      bullet('Domain alphabrief.io verified in Resend — DNS records set on Namecheap (see 2.7).'),
-      bullet('Logic: daily subscribers get email every weekday; weekly subscribers on Mondays only (isMonday check in cron route).'),
-      spacer(),
+      // 7. Pages
+      h1('7. Pages & Routes'),
+      makeTable([
+        { label: 'Route', w: 1800, mono: true },
+        { label: 'File', w: 3600, mono: true },
+        { label: 'Notes', w: 3960 },
+      ], pages),
+      gap(),
 
-      // 2.6 Google Cloud
-      h2('2.6  Google Cloud'),
-      body('Role: OAuth 2.0 provider for "Continue with Google" sign-in via Supabase.'),
-      warn('BILLING: Review Google Cloud billing before September 2026 — a payment or free trial expiry may be due. Check console.cloud.google.com → Billing.'),
-      spacer(),
-      bullet('OAuth credentials live in Google Cloud Console → APIs & Services → Credentials.'),
-      bullet('Client ID + Client Secret pasted into Supabase Auth → Providers → Google. NOT stored as env vars in the app.'),
-      bullet('Authorized redirect URI in Google Cloud: https://[supabase-ref].supabase.co/auth/v1/callback'),
-      spacer(),
+      // 8. Feature status
+      h1('8. Feature Status'),
+      h2('Built & Shipped'),
+      ...built.map(item => bullet(item)),
+      gap(),
+      h2('Pending / Future'),
+      ...pending.map(item => bullet(item, { color: '888888' })),
+      gap(),
 
-      // 2.7 Namecheap
-      h2('2.7  Namecheap'),
-      body('Role: domain registrar for alphabrief.io.'),
-      bullet('DNS records for Resend email verification (DKIM, SPF, DMARC) added — check Resend dashboard for current record values.'),
-      bullet('DNS for the app itself points to Vercel (configured via Vercel domain settings).'),
-      bullet('Check Namecheap for domain renewal date and renew before expiry.'),
-      spacer(),
-
-      // 2.8 Massive
-      h2('2.8  Massive (massive.com)'),
-      body('Role: stock market API — real-time and historical tick data via REST and WebSockets.'),
-      warn('Status: API key stored in .env.local AND Vercel. Not yet wired into any route — integration pending.'),
-      spacer(),
-      bullet('Dashboard + keys: https://massive.com/dashboard/keys'),
-      bullet('Env var: MASSIVE_API_KEY (in .env.local and Vercel environment variables)'),
-      bullet('Free tier: unlimited usage on free tier (per their homepage).'),
-      bullet('Planned use cases: price charts (OHLCV history), real-time WebSocket price streaming, economy/macro data for sector views.'),
-      bullet('Key differentiator vs Finnhub: WebSocket push (live price ticking in UI), richer historical candle data, macro/economy endpoints.'),
-      spacer(),
-      divider(),
-
-      // ── 3. ENVIRONMENT VARIABLES ─────────────────────────────────────────────
-      h1('3. Environment Variables'),
-      body('Set in Vercel dashboard (Production + Preview). Copy to .env.local for local dev (gitignored).'),
-      spacer(),
-      makeTable(
-        [2800, 2400, 4160],
-        ['Variable', 'Required By', 'Notes'],
-        [
-          { cells: ['NEXT_PUBLIC_SUPABASE_URL',      'All Supabase client code',           'Public project URL. Safe to expose in browser.'],                                   monoCol: 0 },
-          { cells: ['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'All Supabase client code',           'Public anon key — respects RLS. Safe to expose.'],                                  monoCol: 0 },
-          { cells: ['SUPABASE_SERVICE_ROLE_KEY',     '/api/cron/email-report',             'Admin key — bypasses RLS. Server-only. Never expose to browser.'],                  monoCol: 0 },
-          { cells: ['FINNHUB_API_KEY',               'All market data API routes',         'Server-only (no NEXT_PUBLIC_ prefix).'],                                            monoCol: 0 },
-          { cells: ['ANTHROPIC_API_KEY',             '/api/brief, /api/sectors/detail',    'Server-only.'],                                                                     monoCol: 0 },
-          { cells: ['RESEND_API_KEY',                '/api/cron/email-report',             'Server-only.'],                                                                     monoCol: 0 },
-          { cells: ['CRON_SECRET',                   '/api/cron/email-report',             'Shared secret — Vercel sends it, endpoint validates it.'],                          monoCol: 0 },
-          { cells: ['MASSIVE_API_KEY',               'Not yet used in any route',           'In .env.local and Vercel. Ready to use — just wire it into a route.'],             monoCol: 0 },
-        ]
-      ),
-      spacer(),
-      divider(),
-
-      // ── 4. INTERNAL API ROUTES ───────────────────────────────────────────────
-      h1('4. Internal API Routes'),
-      makeTable(
-        [2400, 1200, 5760],
-        ['Route', 'Method', 'What It Does'],
-        [
-          { cells: ['/api/brief',              'POST', 'Accepts { tickers[] }. Fetches Finnhub quote+news+earnings, calls Claude Sonnet, returns markdown brief.'],                 monoCol: 0 },
-          { cells: ['/api/sectors/detail',     'GET',  'Returns thesis, drivers, catalyst, outlook for 7 sectors. Claude Haiku + Finnhub ETF data. Cache: 24h in-memory.'],        monoCol: 0 },
-          { cells: ['/api/ipos',               'GET',  'Finnhub IPO calendar: past 30d (priced) + next 60d (upcoming). Enriched with quote + profile. Cache: 6h.'],                monoCol: 0 },
-          { cells: ['/api/earnings',           'GET',  'Finnhub earnings calendar for a symbol between ?from and ?to date params.'],                                               monoCol: 0 },
-          { cells: ['/api/search',             'GET',  'Ticker autocomplete via Finnhub search. Filters to Common Stock only. Max 6 results.'],                                    monoCol: 0 },
-          { cells: ['/api/email-prefs',        'GET',  'Returns current user\'s email_enabled and email_frequency from Supabase.'],                                               monoCol: 0 },
-          { cells: ['/api/email-prefs',        'POST', 'Saves { enabled, frequency } to Supabase portfolios table for authenticated user.'],                                       monoCol: 0 },
-          { cells: ['/api/cron/email-report',  'GET',  'Protected by CRON_SECRET. Queries opted-in users, fetches Finnhub quotes, sends emails via Resend.'],                      monoCol: 0 },
-        ]
-      ),
-      spacer(),
-      divider(),
-
-      // ── 5. ARCHITECTURE ──────────────────────────────────────────────────────
-      h1('5. Architecture & Data Flows'),
-
-      h3('5.1  Stock Brief'),
-      body('User types ticker → /api/search autocomplete (Finnhub) → navigates to /app?t=TICKER → app POSTs to /api/brief → server fetches Finnhub (quote, news, earnings) → calls Claude Sonnet → returns markdown → rendered with react-markdown.'),
-
-      h3('5.2  Sector Thesis'),
-      body('User visits /app/sectors → GET /api/sectors/detail → server fetches all 7 ETF quotes + news from Finnhub in parallel → single prompt to Claude Haiku for JSON → result cached 24h in module-level variable → displayed as card carousel.'),
-
-      h3('5.3  IPO Page'),
-      body('User visits /app/ipos → GET /api/ipos → Finnhub IPO calendar (past 30d + next 60d) → enrich symbols with quote + company profile → cache 6h.'),
-
-      h3('5.4  Email Reports'),
-      body('Vercel cron fires at 13:00 UTC weekdays → /api/cron/email-report validates CRON_SECRET → queries Supabase for opted-in users → fetches Finnhub quotes for each user\'s tickers → builds HTML email → Resend delivers. Weekly subscribers skip non-Monday runs.'),
-
-      h3('5.5  Auth'),
-      body('Email/password handled by Supabase natively. Google OAuth: browser → Google → Supabase callback at /auth/v1/callback → app picks up session at /auth/callback/route.ts → redirects to /app.'),
-      spacer(),
-      divider(),
-
-      // ── 6. BILLING & LIMITS ──────────────────────────────────────────────────
-      h1('6. Billing & Limit Reminders'),
-      makeTable(
-        [1800, 1800, 2200, 3560],
-        ['Service', 'Plan', 'Key Limit', 'Notes'],
-        [
-          { cells: ['Vercel',       'Hobby (free)',   'Cron: 1/day on free plan',    'Verify free plan supports M–F daily cron frequency'],                              highlight: false },
-          { cells: ['Supabase',     'Free',           '500 MB DB, 50K MAU',           'Upgrade to Pro ($25/mo) as user base grows'],                                    highlight: false },
-          { cells: ['Finnhub',      'Free',           '60 req/min',                   'Monitor for timeouts during spiky usage; Massive may supplement'],               highlight: false },
-          { cells: ['Anthropic',    'Pay-as-you-go',  'Per-token cost',               'Haiku used for sectors to save cost vs Sonnet'],                                 highlight: false },
-          { cells: ['Resend',       'Free',           '3,000/mo, 100/day',            'Upgrade if daily sender list exceeds 100 users'],                                highlight: false },
-          { cells: ['Google Cloud', 'Check billing',  '—',                            '⚠️ REVIEW BEFORE SEPTEMBER 2026 — payment or trial expiry may be due'],          highlight: true },
-          { cells: ['Namecheap',    'Annual renewal', 'Check renewal date',           'Renew alphabrief.io domain before expiry'],                                      highlight: false },
-          { cells: ['Massive',      'Free tier',      'Unlimited (per homepage)',      'Key in .env.local and Vercel. Not yet used in code — integration pending.'],     highlight: false },
-        ]
-      ),
-      spacer(),
-      divider(),
-
-      // ── 7. CONTEXT RECOVERY CHECKLIST ───────────────────────────────────────
-      h1('7. Context Recovery Checklist'),
-      body('Use this if rebuilding context after a session break:'),
-      spacer(),
-      bullet('App: https://alphabrief.io  ·  Repo: Desktop/alphabrief  ·  Deploy: push to main → Vercel auto-deploys'),
-      bullet('DB: Supabase — portfolios is the only table; auth handled by Supabase Auth'),
-      bullet('AI: /api/brief → Claude Sonnet  ·  /api/sectors/detail → Claude Haiku'),
-      bullet('Email: Resend via Vercel cron — from briefs@alphabrief.io'),
-      bullet('Google OAuth: credentials in Google Cloud Console, pasted into Supabase (not in .env)'),
-      bullet('Domain DNS: Namecheap — Vercel + Resend records set'),
-      bullet('Massive: stock data API (massive.com) — key in .env.local, NOT yet used in code'),
-      warn('Google Cloud billing: check before September 2026'),
-      spacer(),
-      body('This doc is auto-generated by scripts/build-services-doc.js on every push to main.', { color: LIGHT }),
-      body('To update: edit the script, then run npm run docs (or let the GitHub Action do it on next push).', { color: LIGHT }),
-
-    ],
-  }],
+      // 9. Maintenance
+      h1('9. Document Maintenance'),
+      p('Update this document in the same commit as any code change. No build script — direct maintenance only.'),
+      bullet('New service or API key -> update Sections 2 + 3'),
+      bullet('New or changed Supabase table -> update Section 4'),
+      bullet('New or removed API route -> update Section 5'),
+      bullet('Architecture change -> update Section 6'),
+      bullet('New or removed page -> update Section 7'),
+      bullet('Feature shipped or deferred -> update Section 8'),
+      gap(),
+      mixed({ text: 'File lives at repo root: ', bold: false }, { text: 'AlphaBrief-Services-Reference.docx', font: 'Courier New', bold: true }),
+    ]
+  }]
 });
 
-// ── output ─────────────────────────────────────────────────────────────────────
-const outPath = path.join(__dirname, '..', 'AlphaBrief-Services-Reference.docx');
 Packer.toBuffer(doc).then(buf => {
-  fs.writeFileSync(outPath, buf);
-  console.log(`✓ Written: ${outPath}`);
-});
+  fs.writeFileSync('AlphaBrief-Services-Reference.docx', buf);
+  console.log('Done: AlphaBrief-Services-Reference.docx (' + buf.length + ' bytes)');
+}).catch(e => { console.error(e); process.exit(1); });
