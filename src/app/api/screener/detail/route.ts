@@ -57,9 +57,11 @@ export async function GET(req: Request) {
 
   const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 4) : []
   const latestRec = Array.isArray(recommendations) ? recommendations[0] : null
-  // Peers: filter out self, cap at 6
+  // Peers: US-only tickers (no exchange suffixes like .TO, .L, .AX), filter self, cap at 6
+  // Allows BRK.A / BRK.B style (single letter after dot) but rejects ENGH.TO, ACT.TO etc.
+  const isUSTicker = (t: string) => /^[A-Z]{1,5}$/.test(t) || /^[A-Z]{1,4}\.[A-Z]$/.test(t)
   const peers: string[] = Array.isArray(peersRaw)
-    ? (peersRaw as string[]).filter((p: string) => p !== safeSymbol).slice(0, 6)
+    ? (peersRaw as string[]).filter((p: string) => p !== safeSymbol && isUSTicker(p)).slice(0, 6)
     : []
   const nextEarnings = earningsRaw?.earningsCalendar?.[0] ?? null
 
