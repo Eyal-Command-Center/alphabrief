@@ -220,7 +220,7 @@ function StockCard({ card }: { card: CardState }) {
       })()}
 
       {/* Thesis + Catalyst */}
-      {(d.thesis || d.catalyst) && (
+      {(d.thesis || d.catalystEvent || d.catalystDriver) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
           {d.thesis && (
             <div className="bg-slate-800/40 border border-white/5 rounded-xl p-3.5">
