@@ -1006,16 +1006,16 @@ function MyStocksContent() {
                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Pro</span>
                     <span className="text-xs text-slate-600 font-medium">+ everything in Free</span>
                   </div>
-                  <ul className="space-y-4 flex-1">
+                  <ul className="space-y-2.5 flex-1">
                     {[
-                      { text: 'Thesis alerts', sub: 'Email the moment a thesis flips 🟢→🔴 (up to 10 tickers)' },
-                      { text: 'Daily / weekly digest', sub: 'Your watchlist delivered to your inbox' },
+                      { icon: '⚡', text: 'Thesis alerts', sub: 'Email the moment a thesis flips 🟢→🔴 (up to 10 tickers)' },
+                      { icon: '📬', text: 'Daily / weekly digest', sub: 'Your watchlist delivered to your inbox' },
                     ].map(f => (
-                      <li key={f.text} className="flex items-start gap-2">
-                        <span className="text-emerald-400 mt-0.5 shrink-0 text-xs">✦</span>
+                      <li key={f.text} className="flex items-start gap-3 bg-emerald-500/8 border border-emerald-500/15 rounded-xl px-3 py-3">
+                        <span className="text-base shrink-0 mt-0.5">{f.icon}</span>
                         <div>
-                          <p className="text-xs text-slate-200 font-medium">{f.text}</p>
-                          <p className="text-xs text-slate-500">{f.sub}</p>
+                          <p className="text-sm text-white font-semibold leading-snug">{f.text}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{f.sub}</p>
                         </div>
                       </li>
                     ))}
