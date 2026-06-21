@@ -305,7 +305,7 @@ export default function LandingClient() {
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 md:px-12 py-5 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <span className="text-slate-700 text-xs">© 2025 AlphaBrief</span>
+        <span className="text-slate-700 text-xs">© 2026 AlphaBrief</span>
         <div className="flex items-center gap-5">
           <a href="/privacy" className="text-slate-700 hover:text-slate-500 text-xs transition-colors">Privacy</a>
           <a href="/terms" className="text-slate-700 hover:text-slate-500 text-xs transition-colors">Terms</a>

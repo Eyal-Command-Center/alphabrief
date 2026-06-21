@@ -25,7 +25,7 @@ export default function TermsPage() {
       {/* Content */}
       <main className="max-w-3xl mx-auto px-6 md:px-12 py-16">
         <h1 className="text-3xl font-semibold mb-2">Terms of Service</h1>
-        <p className="text-slate-500 text-sm mb-12">Last updated: June 2025</p>
+        <p className="text-slate-500 text-sm mb-12">Last updated: June 2026</p>
 
         <div className="prose prose-invert prose-sm max-w-none space-y-10 text-slate-300 leading-relaxed">
 
@@ -153,7 +153,7 @@ export default function TermsPage() {
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 md:px-12 py-5 max-w-4xl mx-auto w-full flex items-center justify-between">
-        <span className="text-slate-700 text-xs">© 2025 AlphaBrief</span>
+        <span className="text-slate-700 text-xs">© 2026 AlphaBrief</span>
         <div className="flex items-center gap-4">
           <Link href="/privacy" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">Privacy</Link>
           <Link href="/terms" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">Terms</Link>
