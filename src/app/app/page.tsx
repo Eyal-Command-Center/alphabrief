@@ -972,19 +972,19 @@ function MyStocksContent() {
               <div className="grid grid-cols-2 divide-x divide-white/5">
 
                 {/* Free tier */}
-                <div className="p-5">
+                <div className="p-5 flex flex-col">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">Free</span>
                     <span className="text-xs text-slate-600 font-medium">always</span>
                   </div>
-                  <ul className="space-y-2.5">
+                  <ul className="space-y-2.5 flex-1">
                     {[
                       'Unlimited stock cards',
                       'AI thesis & catalyst',
                       'Analyst consensus',
                       'Live price + chart',
                       'Save your watchlist',
-                      'Earnings calendar',
+                      'Daily / weekly digest',
                     ].map(f => (
                       <li key={f} className="flex items-start gap-2 text-xs text-slate-400">
                         <span className="text-emerald-500 mt-0.5 shrink-0">✓</span>
@@ -1001,16 +1001,15 @@ function MyStocksContent() {
                 </div>
 
                 {/* Pro tier */}
-                <div className="p-5 bg-emerald-500/5">
+                <div className="p-5 bg-emerald-500/5 flex flex-col">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Pro</span>
                     <span className="text-xs text-slate-600 font-medium">+ everything in Free</span>
                   </div>
-                  <ul className="space-y-3">
+                  <ul className="space-y-4 flex-1">
                     {[
-                      { text: 'Thesis change alerts', sub: 'Email when thesis flips' },
-                      { text: 'Daily stock brief', sub: 'Your watchlist, delivered' },
-                      { text: 'Alert watchlist', sub: 'Track up to 20 stocks' },
+                      { text: 'Thesis alerts', sub: 'Email the moment a thesis flips 🟢→🔴' },
+                      { text: 'Thesis watchlist', sub: 'Monitor up to 20 tickers for changes' },
                     ].map(f => (
                       <li key={f.text} className="flex items-start gap-2">
                         <span className="text-emerald-400 mt-0.5 shrink-0 text-xs">✦</span>
