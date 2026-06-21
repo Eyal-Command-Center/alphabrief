@@ -583,6 +583,7 @@ function MyStocksContent() {
   const [savedTickers, setSavedTickers] = useState<string[]>([])
   const [tickerNames, setTickerNames] = useState<Record<string, string>>({})
   const [hasGenerated, setHasGenerated] = useState(false)
+  const [hasEverSearched, setHasEverSearched] = useState(false)
 
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [isPro, setIsPro] = useState(false)
@@ -825,6 +826,7 @@ function MyStocksContent() {
     }
 
     setHasGenerated(true)
+    setHasEverSearched(true)
     setCards(tickerList.map(input => ({ symbol: input, loading: true, data: null, error: false, originalQuery: input })))
 
     tickerList.forEach(async (input) => {
@@ -927,8 +929,8 @@ function MyStocksContent() {
 
           {/* Hero title */}
           {!hasCards && (
-            <div className={!user ? 'mb-7' : 'mb-6'}>
-              {!user ? (
+            <div className={(!user && !hasEverSearched) ? 'mb-7' : 'mb-6'}>
+              {!user && !hasEverSearched ? (
                 <>
                   <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white leading-tight mb-3">
                     Your stocks,{' '}
@@ -962,7 +964,7 @@ function MyStocksContent() {
                     onChange={(e) => handleTickerInput(e.target.value)}
                     placeholder="Ticker or company name, e.g. AAPL, Apple..."
                     className={`w-full bg-slate-900 text-white placeholder-slate-500 focus:outline-none transition-colors ${
-                      !user
+                      !user && !hasEverSearched
                         ? 'border-2 border-white/15 hover:border-white/25 focus:border-emerald-500/70 rounded-2xl px-5 py-4 text-base'
                         : 'border border-white/8 focus:border-emerald-500/60 rounded-xl px-4 py-3 text-sm placeholder-slate-600'
                     }`}
@@ -998,7 +1000,7 @@ function MyStocksContent() {
                   onClick={() => { setShowSuggestions(false); generateAll() }}
                   disabled={isLoading || !tickers.trim()}
                   className={`bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-900 disabled:text-slate-700 disabled:border disabled:border-white/5 text-black font-bold transition-all whitespace-nowrap ${
-                    !user
+                    !user && !hasEverSearched
                       ? 'px-7 py-4 rounded-2xl text-base'
                       : 'px-5 py-3 rounded-xl text-sm font-semibold'
                   }`}
@@ -1014,8 +1016,8 @@ function MyStocksContent() {
             </div>
           )}
 
-          {/* Quick-start chips — unregistered empty state only */}
-          {!hasCards && !user && (
+          {/* Quick-start chips — first visit only */}
+          {!hasCards && !user && !hasEverSearched && (
             <div className="flex items-center gap-2 flex-wrap mb-8">
               <span className="text-slate-500 text-sm">Don&apos;t know where to start — try one:</span>
               {['NVDA', 'AAPL', 'TSLA', 'AMD'].map(sym => (
@@ -1066,8 +1068,8 @@ function MyStocksContent() {
             </div>
           )}
 
-          {/* Example card — unregistered empty state only */}
-          {!hasCards && !user && <ExampleCard />}
+          {/* Example card — first visit only */}
+          {!hasCards && !user && !hasEverSearched && <ExampleCard />}
 
           {/* Value ladder — unregistered users, before any card is generated */}
           {!hasCards && !user && (
