@@ -10,6 +10,8 @@ function makeAdminClient() {
   )
 }
 
+// ── Thesis helpers ────────────────────────────────────────────────────────────
+
 function extractSentiment(thesis: string): 'positive' | 'negative' | 'neutral' {
   if (thesis.includes('🟢')) return 'positive'
   if (thesis.includes('🔴')) return 'negative'
@@ -28,13 +30,91 @@ function sentimentLabel(s: string) {
   return 'Neutral'
 }
 
-function buildAlertEmail(symbol: string, prevSentiment: string, newSentiment: string, newThesis: string): string {
-  const prevEmoji = sentimentEmoji(prevSentiment)
-  const newEmoji = sentimentEmoji(newSentiment)
-  const prevLabel = sentimentLabel(prevSentiment)
-  const newLabel = sentimentLabel(newSentiment)
-  const isWorse = newSentiment === 'negative'
-  const accentColor = isWorse ? '#ef4444' : '#10b981'
+// ── Analyst rating helpers ────────────────────────────────────────────────────
+
+function computeAnalystRating(
+  rec: { buy: number; strongBuy: number; hold: number; sell: number; strongSell: number } | null
+): 'Buy' | 'Hold' | 'Sell' | null {
+  if (!rec) return null
+  const totalBuy = rec.buy + rec.strongBuy
+  const totalSell = rec.sell + rec.strongSell
+  const total = totalBuy + rec.hold + totalSell
+  if (!total) return null
+  const buyPct = totalBuy / total
+  if (buyPct >= 0.6) return 'Buy'
+  if (buyPct >= 0.4) return 'Hold'
+  return 'Sell'
+}
+
+function ratingColor(r: string) {
+  if (r === 'Buy') return '#10b981'
+  if (r === 'Sell') return '#ef4444'
+  return '#f59e0b'
+}
+
+// ── Email builder ─────────────────────────────────────────────────────────────
+
+interface AlertChange {
+  kind: 'thesis' | 'analyst'
+  prev: string
+  next: string
+  newThesis?: string
+}
+
+function buildAlertEmail(symbol: string, changes: AlertChange[]): string {
+  const hasThesis = changes.find(c => c.kind === 'thesis')
+  const hasAnalyst = changes.find(c => c.kind === 'analyst')
+
+  const subjectHint = changes.length > 1
+    ? 'thesis & analyst rating changed'
+    : hasThesis
+    ? `thesis changed — ${sentimentLabel(hasThesis.prev)} → ${sentimentLabel(hasThesis.next)}`
+    : `analyst rating changed — ${hasAnalyst!.prev} → ${hasAnalyst!.next}`
+
+  const accentColor = hasThesis
+    ? (hasThesis.next === 'negative' ? '#ef4444' : '#10b981')
+    : ratingColor(hasAnalyst!.next)
+
+  const thesisSection = hasThesis ? `
+    <h3 style="margin: 0 0 12px; font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em;">Thesis</h3>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+      <tr>
+        <td style="width: 48%; background: #f8fafc; border-radius: 12px; padding: 14px; text-align: center;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">Was</p>
+          <p style="margin: 0; font-size: 20px;">${sentimentEmoji(hasThesis.prev)}</p>
+          <p style="margin: 4px 0 0; font-size: 13px; font-weight: 600; color: #64748b;">${sentimentLabel(hasThesis.prev)}</p>
+        </td>
+        <td style="width: 4%; text-align: center; color: #94a3b8; font-size: 18px;">→</td>
+        <td style="width: 48%; background: #f0fdf4; border: 1px solid ${accentColor}33; border-radius: 12px; padding: 14px; text-align: center;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">Now</p>
+          <p style="margin: 0; font-size: 20px;">${sentimentEmoji(hasThesis.next)}</p>
+          <p style="margin: 4px 0 0; font-size: 13px; font-weight: 700; color: ${accentColor};">${sentimentLabel(hasThesis.next)}</p>
+        </td>
+      </tr>
+    </table>
+    ${hasThesis.newThesis ? `
+    <div style="background: #f8fafc; border-left: 3px solid ${accentColor}; border-radius: 0 8px 8px 0; padding: 14px; margin-bottom: 20px;">
+      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">New thesis</p>
+      <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.6;">${hasThesis.newThesis}</p>
+    </div>` : ''}
+  ` : ''
+
+  const analystSection = hasAnalyst ? `
+    <h3 style="margin: ${hasThesis ? '4px' : '0'} 0 12px; font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em;">Analyst consensus</h3>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
+      <tr>
+        <td style="width: 48%; background: #f8fafc; border-radius: 12px; padding: 14px; text-align: center;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">Was</p>
+          <p style="margin: 4px 0 0; font-size: 16px; font-weight: 700; color: ${ratingColor(hasAnalyst.prev)};">${hasAnalyst.prev}</p>
+        </td>
+        <td style="width: 4%; text-align: center; color: #94a3b8; font-size: 18px;">→</td>
+        <td style="width: 48%; background: #f0fdf4; border: 1px solid ${ratingColor(hasAnalyst.next)}33; border-radius: 12px; padding: 14px; text-align: center;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">Now</p>
+          <p style="margin: 4px 0 0; font-size: 16px; font-weight: 700; color: ${ratingColor(hasAnalyst.next)};">${hasAnalyst.next}</p>
+        </td>
+      </tr>
+    </table>
+  ` : ''
 
   return `<!DOCTYPE html>
 <html>
@@ -49,39 +129,21 @@ function buildAlertEmail(symbol: string, prevSentiment: string, newSentiment: st
             <p style="margin: 0; font-size: 22px; font-weight: 300; color: #10b981; font-family: Georgia, serif;">
               α <span style="color: #ffffff; font-weight: 600; font-size: 20px;">Alpha<span style="color: #10b981;">Brief</span></span>
             </p>
-            <p style="margin: 6px 0 0; color: #64748b; font-size: 13px;">Thesis Alert</p>
+            <p style="margin: 6px 0 0; color: #64748b; font-size: 13px;">Alert · ${symbol}</p>
           </td>
         </tr>
 
         <tr>
           <td style="padding: 32px;">
             <h2 style="margin: 0 0 6px; font-size: 22px; font-weight: 700; color: #0f172a;">
-              ${symbol} thesis changed
+              ${symbol} ${subjectHint}
             </h2>
             <p style="margin: 0 0 24px; color: #64748b; font-size: 14px;">
-              We detected a shift in the investment thesis for ${symbol}.
+              Something important changed on ${symbol}. Here's what we detected.
             </p>
 
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-              <tr>
-                <td style="width: 48%; background: #f8fafc; border-radius: 12px; padding: 16px; text-align: center;">
-                  <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">Was</p>
-                  <p style="margin: 0; font-size: 20px;">${prevEmoji}</p>
-                  <p style="margin: 4px 0 0; font-size: 14px; font-weight: 600; color: #64748b;">${prevLabel}</p>
-                </td>
-                <td style="width: 4%; text-align: center; color: #94a3b8; font-size: 20px;">→</td>
-                <td style="width: 48%; background: #f0fdf4; border: 1px solid ${accentColor}33; border-radius: 12px; padding: 16px; text-align: center;">
-                  <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">Now</p>
-                  <p style="margin: 0; font-size: 20px;">${newEmoji}</p>
-                  <p style="margin: 4px 0 0; font-size: 14px; font-weight: 700; color: ${accentColor};">${newLabel}</p>
-                </td>
-              </tr>
-            </table>
-
-            <div style="background: #f8fafc; border-left: 3px solid ${accentColor}; border-radius: 0 8px 8px 0; padding: 16px; margin-bottom: 28px;">
-              <p style="margin: 0 0 6px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;">New thesis</p>
-              <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.6;">${newThesis}</p>
-            </div>
+            ${thesisSection}
+            ${analystSection}
 
             <div style="text-align: center;">
               <a href="https://alphabrief.io/app?t=${symbol}" style="display: inline-block; background: #10b981; color: #0f172a; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 10px; text-decoration: none;">
@@ -94,7 +156,7 @@ function buildAlertEmail(symbol: string, prevSentiment: string, newSentiment: st
         <tr>
           <td style="padding: 20px 32px; border-top: 1px solid #f1f5f9;">
             <p style="margin: 0; font-size: 12px; color: #94a3b8; text-align: center;">
-              AlphaBrief Pro · Thesis Alerts
+              AlphaBrief Pro · Thesis & Analyst Alerts
               &nbsp;·&nbsp;
               <a href="https://alphabrief.io/app/settings" style="color: #94a3b8;">Manage alerts</a>
             </p>
@@ -107,6 +169,8 @@ function buildAlertEmail(symbol: string, prevSentiment: string, newSentiment: st
 </body>
 </html>`
 }
+
+// ── Cron handler ──────────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
   const secret = req.headers.get('authorization')?.replace('Bearer ', '')
@@ -134,27 +198,25 @@ export async function GET(req: Request) {
     const { user_id, user_email, tickers } = portfolio
     if (!tickers?.length || !user_email) continue
 
-    // Cap at 10 stocks for Pro
     const watchlist: string[] = (tickers as string[]).slice(0, 10)
 
     for (const symbol of watchlist) {
       checked++
       try {
-        // Fetch fresh thesis
         const res = await fetch(`https://alphabrief.io/api/screener/detail?symbol=${symbol}`, {
           headers: { 'Cache-Control': 'no-store' },
         })
         if (!res.ok) continue
         const data = await res.json()
-        const newThesis: string = data.thesis ?? ''
-        if (!newThesis) continue
 
-        const newSentiment = extractSentiment(newThesis)
+        const newThesis: string = data.thesis ?? ''
+        const newSentiment = newThesis ? extractSentiment(newThesis) : null
+        const newRating = computeAnalystRating(data.recommendation ?? null)
 
         // Get stored snapshot
         const { data: snap } = await supabase
           .from('thesis_snapshots')
-          .select('sentiment, thesis')
+          .select('sentiment, thesis, analyst_rating')
           .eq('user_id', user_id)
           .eq('symbol', symbol)
           .single()
@@ -166,31 +228,46 @@ export async function GET(req: Request) {
             symbol,
             sentiment: newSentiment,
             thesis: newThesis,
+            analyst_rating: newRating,
             checked_at: new Date().toISOString(),
           })
           continue
         }
 
-        // Alert if sentiment flipped
-        if (snap.sentiment !== newSentiment) {
+        // Detect what changed
+        const changes: AlertChange[] = []
+
+        if (newSentiment && snap.sentiment && snap.sentiment !== newSentiment) {
+          changes.push({ kind: 'thesis', prev: snap.sentiment, next: newSentiment, newThesis })
+        }
+
+        if (newRating && snap.analyst_rating && snap.analyst_rating !== newRating) {
+          changes.push({ kind: 'analyst', prev: snap.analyst_rating, next: newRating })
+        }
+
+        if (changes.length > 0) {
           await resend.emails.send({
             from: 'AlphaBrief <briefs@alphabrief.io>',
             to: user_email,
-            subject: `⚠️ ${symbol} thesis changed — ${sentimentLabel(snap.sentiment)} → ${sentimentLabel(newSentiment)}`,
-            html: buildAlertEmail(symbol, snap.sentiment, newSentiment, newThesis),
+            subject: `⚠️ ${symbol} alert — ${changes.map(c =>
+              c.kind === 'thesis'
+                ? `thesis ${sentimentLabel(c.prev)} → ${sentimentLabel(c.next)}`
+                : `analyst ${c.prev} → ${c.next}`
+            ).join(' & ')}`,
+            html: buildAlertEmail(symbol, changes),
           })
           alerted++
         }
 
         // Always update snapshot
-        await supabase.from('thesis_snapshots')
-          .upsert({
-            user_id,
-            symbol,
-            sentiment: newSentiment,
-            thesis: newThesis,
-            checked_at: new Date().toISOString(),
-          }, { onConflict: 'user_id,symbol' })
+        await supabase.from('thesis_snapshots').upsert({
+          user_id,
+          symbol,
+          sentiment: newSentiment,
+          thesis: newThesis,
+          analyst_rating: newRating,
+          checked_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,symbol' })
 
       } catch {
         // Continue on error for any single stock
