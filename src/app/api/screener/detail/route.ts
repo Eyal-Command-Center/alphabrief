@@ -30,22 +30,24 @@ export async function GET(req: Request) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const [profileRes, quoteRes, metricsRes, recommendRes, newsRes, earningsRes] = await Promise.all([
+  const [profileRes, quoteRes, metricsRes, recommendRes, newsRes, earningsRes, peersRes] = await Promise.all([
     fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/quote?symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${safeSymbol}&metric=all&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/company-news?symbol=${safeSymbol}&from=${weekAgo}&to=${today}&token=${FINNHUB_TOKEN}`),
     fetch(`https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${in30Days}&symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
+    fetch(`https://finnhub.io/api/v1/stock/peers?symbol=${safeSymbol}&token=${FINNHUB_TOKEN}`),
   ])
 
-  const [profile, quote, metrics, recommendations, newsRaw, earningsRaw] = await Promise.all([
+  const [profile, quote, metrics, recommendations, newsRaw, earningsRaw, peersRaw] = await Promise.all([
     profileRes.json(),
     quoteRes.json(),
     metricsRes.json(),
     recommendRes.json(),
     newsRes.json(),
     earningsRes.json(),
+    peersRes.json(),
   ])
 
   // Reject invalid/unknown tickers — no name and no price means nothing to show
@@ -55,6 +57,10 @@ export async function GET(req: Request) {
 
   const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 4) : []
   const latestRec = Array.isArray(recommendations) ? recommendations[0] : null
+  // Peers: filter out self, cap at 6
+  const peers: string[] = Array.isArray(peersRaw)
+    ? (peersRaw as string[]).filter((p: string) => p !== safeSymbol).slice(0, 6)
+    : []
   const nextEarnings = earningsRaw?.earningsCalendar?.[0] ?? null
 
   const catalystHint = nextEarnings
@@ -110,6 +116,7 @@ Rules:
     symbol: safeSymbol,
     name: profile.name ?? safeSymbol,
     sector: profile.finnhubIndustry ?? '',
+    description: profile.description ?? '',
     logo: profile.logo ?? '',
     price: quote.c,
     change: quote.dp,
@@ -117,7 +124,15 @@ Rules:
     pe: metrics?.metric?.peBasicExclExtraTTM ?? null,
     high52: metrics?.metric?.['52WeekHigh'] ?? null,
     low52: metrics?.metric?.['52WeekLow'] ?? null,
-    recommendation: latestRec ?? null,
+    isProfitable,
+    recommendation: latestRec ? {
+      buy: latestRec.buy ?? 0,
+      strongBuy: latestRec.strongBuy ?? 0,
+      hold: latestRec.hold ?? 0,
+      sell: latestRec.sell ?? 0,
+      strongSell: latestRec.strongSell ?? 0,
+    } : null,
+    peers,
     news: news.map((n: { headline: string; url: string; source: string }) => ({
       headline: n.headline,
       url: n.url,

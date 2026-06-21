@@ -12,6 +12,7 @@ interface StockDetail {
   symbol: string
   name: string
   sector: string
+  description: string
   logo: string
   price: number
   change: number
@@ -19,7 +20,9 @@ interface StockDetail {
   pe: number | null
   high52: number | null
   low52: number | null
-  recommendation: { buy: number; hold: number; sell: number } | null
+  isProfitable: boolean
+  recommendation: { buy: number; strongBuy: number; hold: number; sell: number; strongSell: number } | null
+  peers: string[]
   news: { headline: string; url: string; source: string }[]
   quickTake: string
   thesis: string
@@ -42,12 +45,53 @@ function formatMarketCap(mc: number | null) {
 
 function analystLabel(rec: StockDetail['recommendation']) {
   if (!rec) return null
-  const total = rec.buy + rec.hold + rec.sell
+  const totalBuy = rec.buy + rec.strongBuy
+  const totalSell = rec.sell + rec.strongSell
+  const total = totalBuy + rec.hold + totalSell
   if (!total) return null
-  const buyPct = rec.buy / total
+  const buyPct = totalBuy / total
   if (buyPct >= 0.6) return { label: 'Buy', color: 'text-emerald-400 bg-emerald-500/20' }
   if (buyPct >= 0.4) return { label: 'Hold', color: 'text-amber-400 bg-amber-500/20' }
   return { label: 'Sell', color: 'text-red-400 bg-red-500/20' }
+}
+
+// Inline tooltip — wraps any label text
+function Tooltip({ tip, children }: { tip: string; children: React.ReactNode }) {
+  return (
+    <span className="relative group inline-flex items-center gap-1 cursor-default">
+      {children}
+      <span className="text-slate-700 text-[10px] group-hover:text-slate-500 transition-colors">?</span>
+      <span className="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+        {tip}
+      </span>
+    </span>
+  )
+}
+
+// Feedback thumbs row
+function FeedbackRow({ symbol }: { symbol: string }) {
+  const [sent, setSent] = useState<'up' | 'down' | null>(null)
+  async function send(rating: 'up' | 'down') {
+    setSent(rating)
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, rating }),
+    })
+  }
+  return (
+    <div className="flex items-center justify-between pt-3 mt-1 border-t border-white/5">
+      <p className="text-slate-600 text-xs">Was this brief helpful?</p>
+      {sent ? (
+        <p className="text-slate-500 text-xs">Thanks for the feedback</p>
+      ) : (
+        <div className="flex gap-3">
+          <button onClick={() => send('up')} className="text-slate-500 hover:text-emerald-400 transition-colors text-sm" title="Helpful">👍</button>
+          <button onClick={() => send('down')} className="text-slate-500 hover:text-red-400 transition-colors text-sm" title="Not helpful">👎</button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function StockCard({ card }: { card: CardState }) {
@@ -101,6 +145,11 @@ function StockCard({ card }: { card: CardState }) {
                   {analyst.label}
                 </span>
               )}
+              {!d.isProfitable && (
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                  Pre-profit
+                </span>
+              )}
             </div>
             <p className="text-slate-400 text-sm truncate">{d.name}</p>
             {d.sector && <p className="text-slate-600 text-xs mt-0.5 truncate">{d.sector}</p>}
@@ -113,6 +162,14 @@ function StockCard({ card }: { card: CardState }) {
           </p>
         </div>
       </div>
+
+      {/* Company description */}
+      {d.description && (
+        <div className="mb-4">
+          <p className="text-slate-600 text-xs font-semibold uppercase tracking-widest mb-1.5">About</p>
+          <p className="text-slate-500 text-xs leading-relaxed line-clamp-3">{d.description}</p>
+        </div>
+      )}
 
       {/* Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
@@ -137,18 +194,50 @@ function StockCard({ card }: { card: CardState }) {
         </div>
       )}
 
+      {/* Analyst recommendations bar */}
+      {d.recommendation && (() => {
+        const { buy = 0, strongBuy = 0, hold = 0, sell = 0, strongSell = 0 } = d.recommendation
+        const totalBuy = buy + strongBuy
+        const totalSell = sell + strongSell
+        const total = totalBuy + hold + totalSell
+        if (!total) return null
+        return (
+          <div className="mb-4">
+            <p className="text-slate-600 text-xs font-semibold uppercase tracking-widest mb-2">Analyst Ratings</p>
+            <div className="flex h-1.5 rounded-full overflow-hidden gap-px mb-1.5">
+              {totalBuy > 0 && <div style={{ width: `${(totalBuy / total) * 100}%` }} className="bg-emerald-500" />}
+              {hold > 0 && <div style={{ width: `${(hold / total) * 100}%` }} className="bg-amber-400" />}
+              {totalSell > 0 && <div style={{ width: `${(totalSell / total) * 100}%` }} className="bg-red-500" />}
+            </div>
+            <div className="flex gap-4">
+              <span className="text-xs text-emerald-400">{totalBuy} Buy</span>
+              <span className="text-xs text-amber-400">{hold} Hold</span>
+              <span className="text-xs text-red-400">{totalSell} Sell</span>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Thesis + Catalyst */}
       {(d.thesis || d.catalyst) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
           {d.thesis && (
             <div className="bg-slate-800/40 border border-white/5 rounded-xl p-3.5">
-              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">Thesis Check</p>
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">
+                <Tooltip tip="The fundamental investment case — is the core reason to own this stock getting stronger, weaker, or unchanged? Starts with 🟢 Positive, 🔴 Negative, or 🟡 No change.">
+                  Thesis Check
+                </Tooltip>
+              </p>
               <p className="text-slate-300 text-sm leading-relaxed">{d.thesis}</p>
             </div>
           )}
           {d.catalyst && (
             <div className="bg-slate-800/40 border border-white/5 rounded-xl p-3.5">
-              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">Catalyst</p>
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">
+                <Tooltip tip="The next event or development that could move this stock — typically an earnings date, product launch, or regulatory decision.">
+                  Catalyst
+                </Tooltip>
+              </p>
               <p className="text-slate-300 text-sm leading-relaxed">{d.catalyst}</p>
             </div>
           )}
@@ -157,7 +246,7 @@ function StockCard({ card }: { card: CardState }) {
 
       {/* News */}
       {d.news.length > 0 && (
-        <div className="border-t border-white/5 pt-4">
+        <div className="border-t border-white/5 pt-4 mb-4">
           <p className="text-slate-600 text-xs font-semibold uppercase tracking-widest mb-3">Recent News</p>
           <div className="space-y-2.5">
             {d.news.map((n, i) => (
@@ -178,6 +267,27 @@ function StockCard({ card }: { card: CardState }) {
           </div>
         </div>
       )}
+
+      {/* Similar companies */}
+      {d.peers && d.peers.length > 0 && (
+        <div className="border-t border-white/5 pt-3 mb-3">
+          <p className="text-slate-600 text-xs font-semibold uppercase tracking-widest mb-2">In the same sector</p>
+          <div className="flex flex-wrap gap-1.5">
+            {d.peers.map((peer) => (
+              <a
+                key={peer}
+                href={`/app?t=${peer}`}
+                className="px-2.5 py-1 bg-slate-800 border border-white/8 rounded-lg text-xs text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors font-medium"
+              >
+                {peer}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Feedback */}
+      <FeedbackRow symbol={d.symbol} />
     </div>
   )
 }
