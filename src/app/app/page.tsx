@@ -26,7 +26,8 @@ interface StockDetail {
   news: { headline: string; url: string; source: string }[]
   quickTake: string
   thesis: string
-  catalyst: string
+  catalystEvent: string
+  catalystDriver: string
 }
 
 interface CardState {
@@ -231,14 +232,25 @@ function StockCard({ card }: { card: CardState }) {
               <p className="text-slate-300 text-sm leading-relaxed">{d.thesis}</p>
             </div>
           )}
-          {d.catalyst && (
+          {(d.catalystEvent || d.catalystDriver) && (
             <div className="bg-slate-800/40 border border-white/5 rounded-xl p-3.5">
-              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">
-                <Tooltip tip="The next event or development that could move this stock — typically an earnings date, product launch, or regulatory decision.">
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-2.5">
+                <Tooltip tip="An event, disclosure, or development that triggers a significant shift in a stock's price or valuation — the spark that turns potential into momentum.">
                   Catalyst
                 </Tooltip>
               </p>
-              <p className="text-slate-300 text-sm leading-relaxed">{d.catalyst}</p>
+              {d.catalystDriver && (
+                <div className="mb-2">
+                  <p className="text-slate-600 text-[10px] uppercase tracking-widest mb-1">Key driver</p>
+                  <p className="text-slate-300 text-sm leading-relaxed">{d.catalystDriver}</p>
+                </div>
+              )}
+              {d.catalystEvent && (
+                <div className={d.catalystDriver ? 'border-t border-white/5 pt-2 mt-2' : ''}>
+                  <p className="text-slate-600 text-[10px] uppercase tracking-widest mb-1">Next event</p>
+                  <p className="text-slate-400 text-xs leading-relaxed">{d.catalystEvent}</p>
+                </div>
+              )}
             </div>
           )}
         </div>

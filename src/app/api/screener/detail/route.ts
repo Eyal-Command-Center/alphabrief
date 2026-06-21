@@ -81,7 +81,8 @@ export async function GET(req: Request) {
   "about": "One sentence on what this company actually does — in plain English, not just the industry label. E.g. 'Operates the world's largest e-commerce marketplace and cloud infrastructure platform (AWS).' Be specific.",
   "quickTake": "2-3 sentences on the stock's current situation — price action, what's driving it, anything worth flagging. Use ⚠️ for risks, ✅ for positives.",
   "thesis": "Start with exactly one of: 🟢 Positive, 🔴 Negative, or 🟡 No change — then one sentence on the fundamental story and whether anything is shifting.",
-  "catalyst": "One sentence on the next key event. Use the earnings data provided. If nothing notable: 'Nothing notable until next earnings.'"
+  "catalystEvent": "One sentence on the next scheduled event. Use the earnings data provided. If nothing notable: 'Nothing notable until next earnings.'",
+  "catalystDriver": "One sentence on the current fundamental force driving this stock's momentum or valuation — the underlying theme or tailwind that's actually moving it. E.g. 'AI infrastructure buildout is driving hyperscaler GPU demand.' Every company has one — never leave this blank."
 }
 
 Data:
@@ -109,7 +110,7 @@ Rules:
 
   const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
-  let parsed = { about: '', quickTake: '', thesis: '', catalyst: '' }
+  let parsed = { about: '', quickTake: '', thesis: '', catalystEvent: '', catalystDriver: '' }
   try {
     parsed = JSON.parse(cleaned)
   } catch {
@@ -144,7 +145,8 @@ Rules:
     })),
     quickTake: parsed.quickTake,
     thesis: parsed.thesis,
-    catalyst: parsed.catalyst,
+    catalystEvent: parsed.catalystEvent,
+    catalystDriver: parsed.catalystDriver,
   }
 
   cache.set(safeSymbol, { data: result, ts: Date.now() })
