@@ -1,5 +1,4 @@
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY
 
 const TTL_MS = 6 * 60 * 60 * 1000 // 6 hours
 let cache: { data: unknown; ts: number } | null = null
@@ -85,38 +84,9 @@ export async function GET() {
 
           const sector = (profile.finnhubIndustry && profile.finnhubIndustry !== 'N/A')
             ? profile.finnhubIndustry : null
+          // Use Finnhub's description directly — Claude doesn't reliably know recent IPOs
           const description: string = profile.description?.trim() || ''
-
-          // Generate about via Claude — 2-sentence investor overview
-          let about: string | null = null
-          if (ANTHROPIC_KEY) {
-            try {
-              const companyName = profile.name || symbol
-              const prompt = description
-                ? `Write a 2-sentence overview of ${companyName} (${sector ?? 'unknown sector'}) for investors. Be factual and concise. Base it on: "${description.slice(0, 400)}"`
-                : `Write a 2-sentence overview of ${companyName} (ticker: ${symbol}${sector ? `, sector: ${sector}` : ''}) for investors. Be factual and concise. Focus on what the company does and its recent IPO.`
-
-              const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                  'x-api-key': ANTHROPIC_KEY,
-                  'anthropic-version': '2023-06-01',
-                  'content-type': 'application/json',
-                },
-                body: JSON.stringify({
-                  model: 'claude-haiku-4-5-20251001',
-                  max_tokens: 120,
-                  messages: [{ role: 'user', content: prompt }],
-                }),
-              })
-              const aiData = await aiRes.json()
-              about = aiData?.content?.[0]?.text?.trim() ?? null
-            } catch {
-              about = description ? description.slice(0, 200) : null
-            }
-          } else {
-            about = description ? description.slice(0, 200) : null
-          }
+          const about: string | null = description.length > 20 ? description.slice(0, 300) : null
 
           return {
             symbol,
