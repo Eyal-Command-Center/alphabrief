@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
@@ -69,6 +69,37 @@ function Tooltip({ tip, children }: { tip: string; children: React.ReactNode }) 
   )
 }
 
+// Copy link button
+function CopyLinkButton({ symbol }: { symbol: string }) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    const url = `${window.location.origin}/app?t=${symbol}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <button
+      onClick={copy}
+      className="flex items-center gap-1.5 text-slate-600 hover:text-slate-300 transition-colors text-xs"
+      title="Copy link to this stock"
+    >
+      {copied ? (
+        <>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span className="text-emerald-400">Copied!</span>
+        </>
+      ) : (
+        <>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 7.5l3-3M7 3.5h1.5a1.5 1.5 0 010 3H7m-2 1H3.5a1.5 1.5 0 010-3H5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+          <span>Share</span>
+        </>
+      )}
+    </button>
+  )
+}
+
 // Feedback thumbs row
 function FeedbackRow({ symbol }: { symbol: string }) {
   const [sent, setSent] = useState<'up' | 'down' | null>(null)
@@ -82,20 +113,152 @@ function FeedbackRow({ symbol }: { symbol: string }) {
   }
   return (
     <div className="flex items-center justify-between pt-3 mt-1 border-t border-white/5">
-      <p className="text-slate-600 text-xs">Was this brief helpful?</p>
+      <CopyLinkButton symbol={symbol} />
       {sent ? (
         <p className="text-slate-500 text-xs">Thanks for the feedback</p>
       ) : (
-        <div className="flex gap-3">
+        <div className="flex items-center gap-1">
+          <p className="text-slate-600 text-xs mr-2">Helpful?</p>
           <button onClick={() => send('up')} className="text-slate-500 hover:text-emerald-400 transition-colors text-sm" title="Helpful">👍</button>
-          <button onClick={() => send('down')} className="text-slate-500 hover:text-red-400 transition-colors text-sm" title="Not helpful">👎</button>
+          <button onClick={() => send('down')} className="text-slate-500 hover:text-red-400 transition-colors text-sm ml-1" title="Not helpful">👎</button>
         </div>
       )}
     </div>
   )
 }
 
-function StockCard({ card }: { card: CardState }) {
+interface ChartCandle { t: number; c: number; ema200: number | null }
+
+function MiniChart({ symbol }: { symbol: string }) {
+  const [data, setData] = useState<ChartCandle[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/chart?symbol=${symbol}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.candles) setData(d.candles)
+        else setError(true)
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }, [symbol])
+
+  if (loading) {
+    return (
+      <div className="h-36 flex items-center justify-center">
+        <div className="w-4 h-4 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
+  if (error || !data || data.length === 0) {
+    return (
+      <div className="h-36 flex items-center justify-center">
+        <p className="text-slate-600 text-xs">Chart data unavailable</p>
+      </div>
+    )
+  }
+
+  const W = 600
+  const H = 120
+  const pad = { top: 8, bottom: 8, left: 4, right: 4 }
+  const innerW = W - pad.left - pad.right
+  const innerH = H - pad.top - pad.bottom
+
+  const prices = data.map((d) => d.c)
+  const minP = Math.min(...prices)
+  const maxP = Math.max(...prices)
+  const rangeP = maxP - minP || 1
+
+  const xOf = (i: number) => pad.left + (i / (data.length - 1)) * innerW
+  const yOf = (p: number) => pad.top + innerH - ((p - minP) / rangeP) * innerH
+
+  // Price line path
+  const pricePath = data
+    .map((d, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)},${yOf(d.c).toFixed(1)}`)
+    .join(' ')
+
+  // EMA 200 path — only where non-null
+  let emaPath = ''
+  let emaStarted = false
+  for (let i = 0; i < data.length; i++) {
+    const e = data[i].ema200
+    if (e == null) continue
+    if (!emaStarted) {
+      emaPath += `M${xOf(i).toFixed(1)},${yOf(e).toFixed(1)}`
+      emaStarted = true
+    } else {
+      emaPath += ` L${xOf(i).toFixed(1)},${yOf(e).toFixed(1)}`
+    }
+  }
+
+  // Fill area under price line
+  const fillPath = `${pricePath} L${xOf(data.length - 1).toFixed(1)},${H} L${xOf(0).toFixed(1)},${H} Z`
+
+  const lastPrice = data[data.length - 1].c
+  const firstPrice = data[0].c
+  const isUp = lastPrice >= firstPrice
+  const priceColor = isUp ? '#10b981' : '#ef4444'
+
+  // Current price position for dot
+  const dotX = xOf(data.length - 1)
+  const dotY = yOf(lastPrice)
+
+  // Last EMA value
+  const lastEma = data.findLast((d) => d.ema200 != null)?.ema200
+
+  return (
+    <div className="mt-3 mb-1">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        style={{ height: 140 }}
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id={`fill-${symbol}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={priceColor} stopOpacity="0.15" />
+            <stop offset="100%" stopColor={priceColor} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Fill */}
+        <path d={fillPath} fill={`url(#fill-${symbol})`} />
+
+        {/* Price line */}
+        <path d={pricePath} fill="none" stroke={priceColor} strokeWidth="1.5" strokeLinejoin="round" />
+
+        {/* EMA 200 line */}
+        {emaPath && (
+          <path d={emaPath} fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="4 3" strokeLinejoin="round" />
+        )}
+
+        {/* End dot */}
+        <circle cx={dotX} cy={dotY} r="3" fill={priceColor} />
+      </svg>
+
+      {/* Legend */}
+      <div className="flex items-center justify-between mt-1.5 px-1">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 rounded" style={{ backgroundColor: priceColor }} />
+            <span className="text-slate-600 text-[10px]">Price</span>
+          </div>
+          {lastEma != null && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-0" style={{ borderTop: '1px dashed #f59e0b' }} />
+              <span className="text-slate-600 text-[10px]">EMA 200 ${lastEma.toFixed(0)}</span>
+            </div>
+          )}
+        </div>
+        <span className="text-slate-600 text-[10px]">1Y</span>
+      </div>
+    </div>
+  )
+}
+
+function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: number; change: number } }) {
   if (card.loading) {
     return (
       <div className="bg-slate-900 border border-white/8 rounded-2xl p-6 flex items-center gap-3">
@@ -124,6 +287,10 @@ function StockCard({ card }: { card: CardState }) {
 
   const d = card.data
   const analyst = analystLabel(d.recommendation)
+  const [showChart, setShowChart] = useState(false)
+  // Live price overrides card data when market is open
+  const displayPrice = livePrice?.price ?? d.price
+  const displayChange = livePrice?.change ?? d.change
 
   return (
     <div className="bg-slate-900 border border-white/8 rounded-2xl p-5 md:p-6">
@@ -157,9 +324,12 @@ function StockCard({ card }: { card: CardState }) {
           </div>
         </div>
         <div className="text-right shrink-0 ml-3">
-          <p className="text-white font-bold text-xl md:text-2xl">${d.price?.toFixed(2)}</p>
-          <p className={`text-sm font-medium ${d.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {d.change >= 0 ? '+' : ''}{d.change?.toFixed(2)}%
+          <p className="text-white font-bold text-xl md:text-2xl">
+            ${displayPrice?.toFixed(2)}
+            {livePrice && <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse align-middle" />}
+          </p>
+          <p className={`text-sm font-medium ${displayChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {displayChange >= 0 ? '+' : ''}{displayChange?.toFixed(2)}%
           </p>
         </div>
       </div>
@@ -185,6 +355,21 @@ function StockCard({ card }: { card: CardState }) {
             <p className="text-white text-xs font-semibold">{m.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Chart toggle */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowChart((v) => !v)}
+          className="flex items-center gap-1.5 text-slate-600 hover:text-slate-400 transition-colors text-xs"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M1 9l3-3 2 2 3-4 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {showChart ? 'Hide chart' : 'Show chart'}
+          <span className="text-slate-700 ml-1">· 1Y + EMA 200</span>
+        </button>
+        {showChart && <MiniChart symbol={d.symbol} />}
       </div>
 
       {/* Quick Take */}
@@ -337,6 +522,11 @@ function MyStocksContent() {
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [isPro, setIsPro] = useState(false)
 
+  // Live price state — updated every 10s during market hours
+  const [livePrices, setLivePrices] = useState<Record<string, { price: number; change: number }>>({})
+  const [marketOpen, setMarketOpen] = useState(false)
+  const livePollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const [suggestions, setSuggestions] = useState<{ symbol: string; name: string }[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -435,6 +625,37 @@ function MyStocksContent() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Live price polling — runs every 10s when cards are loaded
+  const pollPrices = useCallback(async (symbols: string[]) => {
+    if (!symbols.length) return
+    try {
+      const res = await fetch(`/api/prices?symbols=${symbols.join(',')}`)
+      const data = await res.json()
+      setMarketOpen(data.marketOpen ?? false)
+      if (data.prices && Object.keys(data.prices).length > 0) {
+        setLivePrices((prev) => ({ ...prev, ...data.prices }))
+      }
+    } catch {
+      // Silent fail — stale prices are fine
+    }
+  }, [])
+
+  useEffect(() => {
+    const loadedSymbols = cards.filter(c => !c.loading && c.data).map(c => c.symbol)
+    if (!loadedSymbols.length) return
+
+    // Initial fetch
+    pollPrices(loadedSymbols)
+
+    // Poll every 10 seconds
+    if (livePollRef.current) clearInterval(livePollRef.current)
+    livePollRef.current = setInterval(() => pollPrices(loadedSymbols), 10_000)
+
+    return () => {
+      if (livePollRef.current) clearInterval(livePollRef.current)
+    }
+  }, [cards, pollPrices])
 
   function handleTickerInput(value: string) {
     setTickers(value)
@@ -609,6 +830,12 @@ function MyStocksContent() {
           <Link href="/app/ipos" className="text-sm text-slate-500 hover:text-white transition-colors">IPOs</Link>
           <Link href="/app/calendar" className="text-sm text-slate-500 hover:text-white transition-colors">Calendar</Link>
           <Link href="/app/settings" className="text-sm text-slate-500 hover:text-white transition-colors">Settings</Link>
+          {marketOpen && Object.keys(livePrices).length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
+          )}
           {!user && (
             <button
               onClick={() => { setShowAuthForm(true); setAuthMode('login') }}
@@ -793,7 +1020,11 @@ function MyStocksContent() {
               </button>
 
               {cards.map((card) => (
-                <StockCard key={card.symbol} card={card} />
+                <StockCard
+                  key={card.symbol}
+                  card={card}
+                  livePrice={marketOpen ? livePrices[card.symbol] : undefined}
+                />
               ))}
 
               {/* Signed-in nudges below cards */}
