@@ -252,7 +252,7 @@ function MiniChart({ symbol }: { symbol: string }) {
             </div>
           )}
         </div>
-        <span className="text-slate-600 text-[10px]">1Y</span>
+        <span className="text-slate-600 text-[10px]">3M</span>
       </div>
     </div>
   )
@@ -361,16 +361,16 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
       <div className="mb-4">
         <button
           onClick={() => setShowChart((v) => !v)}
-          className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
+          className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${
             showChart
-              ? 'bg-slate-700/60 border-white/10 text-slate-300'
-              : 'bg-slate-800/60 border-white/8 text-slate-400 hover:text-slate-200 hover:border-white/15'
+              ? 'bg-slate-700/60 border-white/10 text-white'
+              : 'bg-slate-800/60 border-white/15 text-slate-200 hover:text-white hover:border-white/25 hover:bg-slate-700/50'
           }`}
         >
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <path d="M1 10l3.5-3.5 2.5 2.5 3-4.5 2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          {showChart ? 'Hide chart' : '1Y chart + EMA 200'}
+          {showChart ? 'Hide chart' : '3M chart + EMA 200'}
         </button>
         {showChart && <MiniChart symbol={d.symbol} />}
       </div>

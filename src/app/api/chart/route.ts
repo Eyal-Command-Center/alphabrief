@@ -72,9 +72,9 @@ export async function GET(req: Request) {
   const closes = candles.map((c: { c: number }) => c.c)
   const ema200 = calcEMA(closes, 200)
 
-  // Trim to last 365 trading days for display — EMA is already fully warmed up
-  const displayCandles = candles.slice(-365)
-  const displayEma = ema200.slice(-365)
+  // Trim to last ~63 trading days (~3 months) for display — EMA is already fully warmed up
+  const displayCandles = candles.slice(-63)
+  const displayEma = ema200.slice(-63)
 
   const result = {
     symbol: safeSymbol,
