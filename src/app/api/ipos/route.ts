@@ -1,4 +1,5 @@
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY
 
 const TTL_MS = 6 * 60 * 60 * 1000 // 6 hours
 let cache: { data: unknown; ts: number } | null = null
@@ -32,6 +33,15 @@ export async function GET() {
     exchange: string
   }
 
+  interface EnrichmentData {
+    symbol: string
+    currentPrice: number | null
+    priceChange: number | null
+    sector: string | null
+    marketCap: number | null
+    about: string | null
+  }
+
   const format = (entry: IpoRaw, enrichment?: EnrichmentData) => ({
     date: entry.date,
     name: entry.name,
@@ -45,26 +55,18 @@ export async function GET() {
     priceChange: enrichment?.priceChange ?? null,
     sector: enrichment?.sector ?? null,
     marketCap: enrichment?.marketCap ?? null,
+    about: enrichment?.about ?? null,
   })
 
   const recentList: IpoRaw[] = (recentRaw?.ipoCalendar ?? [])
     .filter((e: IpoRaw) => e.status === 'priced')
     .sort((a: IpoRaw, b: IpoRaw) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 15) // cap to limit enrichment API calls
+    .slice(0, 15)
 
   const upcomingList: IpoRaw[] = (upcomingRaw?.ipoCalendar ?? [])
     .filter((e: IpoRaw) => e.status !== 'priced')
     .sort((a: IpoRaw, b: IpoRaw) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 10) // cap to limit enrichment API calls
-
-  // Enrich all entries that have a symbol
-  interface EnrichmentData {
-    symbol: string
-    currentPrice: number | null
-    priceChange: number | null
-    sector: string | null
-    marketCap: number | null
-  }
+    .slice(0, 10)
 
   const allEntries = [...recentList, ...upcomingList]
   const symbolsToEnrich = [...new Set(allEntries.map(e => e.symbol).filter(Boolean))]
@@ -80,15 +82,52 @@ export async function GET() {
             fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_TOKEN}`),
           ])
           const [quote, profile] = await Promise.all([quoteRes.json(), profileRes.json()])
+
+          const sector = (profile.finnhubIndustry && profile.finnhubIndustry !== 'N/A')
+            ? profile.finnhubIndustry : null
+          const description: string = profile.description?.trim() || ''
+
+          // Generate about via Claude — 2-sentence investor overview
+          let about: string | null = null
+          if (ANTHROPIC_KEY) {
+            try {
+              const companyName = profile.name || symbol
+              const prompt = description
+                ? `Write a 2-sentence overview of ${companyName} (${sector ?? 'unknown sector'}) for investors. Be factual and concise. Base it on: "${description.slice(0, 400)}"`
+                : `Write a 2-sentence overview of ${companyName} (ticker: ${symbol}${sector ? `, sector: ${sector}` : ''}) for investors. Be factual and concise. Focus on what the company does and its recent IPO.`
+
+              const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                  'x-api-key': ANTHROPIC_KEY,
+                  'anthropic-version': '2023-06-01',
+                  'content-type': 'application/json',
+                },
+                body: JSON.stringify({
+                  model: 'claude-haiku-4-5-20251001',
+                  max_tokens: 120,
+                  messages: [{ role: 'user', content: prompt }],
+                }),
+              })
+              const aiData = await aiRes.json()
+              about = aiData?.content?.[0]?.text?.trim() ?? null
+            } catch {
+              about = description ? description.slice(0, 200) : null
+            }
+          } else {
+            about = description ? description.slice(0, 200) : null
+          }
+
           return {
             symbol,
             currentPrice: quote.c > 0 ? quote.c : null,
             priceChange: typeof quote.dp === 'number' ? quote.dp : null,
-            sector: (profile.finnhubIndustry && profile.finnhubIndustry !== 'N/A') ? profile.finnhubIndustry : null,
+            sector,
             marketCap: profile.marketCapitalization > 0 ? profile.marketCapitalization : null,
+            about,
           } as EnrichmentData
         } catch {
-          return { symbol, currentPrice: null, priceChange: null, sector: null, marketCap: null } as EnrichmentData
+          return { symbol, currentPrice: null, priceChange: null, sector: null, marketCap: null, about: null } as EnrichmentData
         }
       })
     )

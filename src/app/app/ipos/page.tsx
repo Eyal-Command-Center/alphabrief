@@ -21,6 +21,7 @@ interface IpoEntry {
   priceChange: number | null
   sector: string | null
   marketCap: number | null
+  about: string | null
 }
 
 function formatDealSize(val: number | null) {
@@ -126,8 +127,13 @@ function IpoRow({
         </div>
       </div>
 
+      {/* About */}
+      {ipo.about && (
+        <p className="text-slate-400 text-xs leading-relaxed mt-2 mb-2">{ipo.about}</p>
+      )}
+
       {/* Bottom row: metadata + save */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-slate-500 text-xs">{formatDate(ipo.date)}</span>
           {ipo.price && <span className="text-slate-400 text-xs">IPO @ ${ipo.price}</span>}
@@ -195,11 +201,14 @@ export default function IposPage() {
     setSavedTickers(prev => new Set([...prev, symbol]))
     showToast(`${symbol} added to My Stocks`)
 
-    // Persist
+    // Persist — must use onConflict:'user_id' so upsert updates existing row
     const { data } = await supabase.from('portfolios').select('tickers').eq('user_id', user.id).single()
     const existing: string[] = data?.tickers ?? []
     const merged = Array.from(new Set([...existing, symbol]))
-    await supabase.from('portfolios').upsert({ user_id: user.id, tickers: merged })
+    await supabase.from('portfolios').upsert(
+      { user_id: user.id, tickers: merged, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    )
   }
 
   function showToast(msg: string) {
