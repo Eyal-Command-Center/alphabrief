@@ -29,6 +29,16 @@ interface SectorCard {
   error: boolean
 }
 
+interface MacroIndicators {
+  cpi_yoy: number | null
+  core_cpi_yoy: number | null
+  unemployment: number | null
+  yield_2y: number | null
+  yield_10y: number | null
+  yield_spread: number | null
+  as_of: { yields: string | null; inflation: string | null; labor: string | null }
+}
+
 const SECTORS = [
   { key: 'technology',     name: 'Technology' },
   { key: 'healthcare',     name: 'Healthcare' },
@@ -49,6 +59,124 @@ const SECTOR_ICONS: Record<string, string> = {
   'comm-services': '📡',
 }
 
+function fmt(n: number | null, decimals = 1, suffix = '%') {
+  if (n === null) return '—'
+  return `${n.toFixed(decimals)}${suffix}`
+}
+
+function fmtDate(d: string | null) {
+  if (!d) return ''
+  const dt = new Date(d)
+  return dt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
+// Color for CPI / unemployment: high = red, low = green
+function inflationColor(v: number | null) {
+  if (v === null) return 'text-slate-400'
+  if (v >= 4) return 'text-red-400'
+  if (v >= 2.5) return 'text-amber-400'
+  return 'text-emerald-400'
+}
+
+function unempColor(v: number | null) {
+  if (v === null) return 'text-slate-400'
+  if (v >= 5) return 'text-red-400'
+  if (v >= 4) return 'text-amber-400'
+  return 'text-emerald-400'
+}
+
+// Color for spread: negative = inverted (red), positive = normal (slate/emerald)
+function spreadColor(bps: number | null) {
+  if (bps === null) return 'text-slate-400'
+  if (bps < 0) return 'text-red-400'
+  if (bps < 30) return 'text-amber-400'
+  return 'text-slate-300'
+}
+
+function MacroStrip({ macro }: { macro: MacroIndicators | null }) {
+  if (!macro) {
+    return (
+      <div className="mb-6 bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-2">
+        <div className="w-3 h-3 border border-slate-700 border-t-slate-500 rounded-full animate-spin" />
+        <span className="text-slate-600 text-xs">Loading macro data…</span>
+      </div>
+    )
+  }
+
+  const spread = macro.yield_spread
+  const spreadLabel = spread === null ? '—' : `${spread > 0 ? '+' : ''}${spread}bps`
+  const curveLabel = spread === null ? '' : spread < 0 ? ' (inverted)' : spread < 30 ? ' (flat)' : ' (normal)'
+
+  const items = [
+    {
+      label: 'CPI YoY',
+      value: fmt(macro.cpi_yoy),
+      color: inflationColor(macro.cpi_yoy),
+      sub: fmtDate(macro.as_of.inflation),
+      tooltip: 'Headline consumer price inflation, year-over-year',
+    },
+    {
+      label: 'Core CPI',
+      value: fmt(macro.core_cpi_yoy),
+      color: inflationColor(macro.core_cpi_yoy),
+      sub: fmtDate(macro.as_of.inflation),
+      tooltip: 'Core CPI (ex food & energy) YoY — Fed\'s preferred inflation signal',
+    },
+    {
+      label: 'Unemployment',
+      value: fmt(macro.unemployment),
+      color: unempColor(macro.unemployment),
+      sub: fmtDate(macro.as_of.labor),
+      tooltip: 'US unemployment rate',
+    },
+    {
+      label: '2Y Yield',
+      value: fmt(macro.yield_2y),
+      color: 'text-slate-300',
+      sub: fmtDate(macro.as_of.yields),
+      tooltip: '2-year US Treasury yield — reflects near-term Fed rate expectations',
+    },
+    {
+      label: '10Y Yield',
+      value: fmt(macro.yield_10y),
+      color: 'text-slate-300',
+      sub: fmtDate(macro.as_of.yields),
+      tooltip: '10-year US Treasury yield — benchmark for mortgages and long-term rates',
+    },
+    {
+      label: '10Y–2Y',
+      value: spreadLabel + curveLabel,
+      color: spreadColor(spread),
+      sub: fmtDate(macro.as_of.yields),
+      tooltip: 'Yield curve spread. Negative = inverted (historically precedes recessions)',
+    },
+  ]
+
+  return (
+    <div className="mb-6 bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3">
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <span className="text-slate-600 text-[10px] font-semibold uppercase tracking-widest">Macro Context</span>
+        <span className="text-slate-700 text-[10px]">· Fed data via Massive</span>
+      </div>
+      <div className="flex gap-5 overflow-x-auto scrollbar-none pb-0.5">
+        {items.map(item => (
+          <div key={item.label} className="flex flex-col shrink-0 group relative" title={item.tooltip}>
+            <span className="text-slate-500 text-[10px] font-medium uppercase tracking-wide mb-1 whitespace-nowrap">
+              {item.label}
+            </span>
+            <span className={`text-sm font-semibold whitespace-nowrap ${item.color}`}>
+              {item.value}
+            </span>
+            {item.sub && (
+              <span className="text-slate-700 text-[10px] mt-0.5 whitespace-nowrap">{item.sub}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SectorsPage() {
   const [cards, setCards] = useState<SectorCard[]>(
     SECTORS.map(s => ({ sector: s.key, name: s.name, loading: true, data: null, error: false }))
@@ -56,6 +184,7 @@ export default function SectorsPage() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [user, setUser] = useState<User | null>(null)
   const [showAuth, setShowAuth] = useState(false)
+  const [macro, setMacro] = useState<MacroIndicators | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -80,14 +209,17 @@ export default function SectorsPage() {
       })
   }, [])
 
+  useEffect(() => {
+    fetch('/api/macro/indicators')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setMacro(data) })
+      .catch(() => {})
+  }, [])
+
   const current = cards[activeIndex]
 
   function prev() { setActiveIndex(i => (i - 1 + SECTORS.length) % SECTORS.length) }
   function next() { setActiveIndex(i => (i + 1) % SECTORS.length) }
-
-  async function signOut() {
-    await supabase.auth.signOut()
-  }
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
@@ -122,10 +254,13 @@ export default function SectorsPage() {
         <div className="w-full max-w-2xl">
 
           {/* Page title */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">Sector Thesis</h2>
             <p className="text-slate-500 text-sm">What&apos;s driving each sector, what to watch, and where the top names are.</p>
           </div>
+
+          {/* Macro context strip */}
+          <MacroStrip macro={macro} />
 
           {/* Sector tabs */}
           <div className="flex gap-1.5 flex-wrap mb-6">
