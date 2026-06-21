@@ -56,6 +56,12 @@ function analystLabel(rec: StockDetail['recommendation']) {
   return { label: 'Sell', color: 'text-red-400 bg-red-500/20' }
 }
 
+function thesisBadge(thesis: string) {
+  if (thesis.includes('🟢')) return { label: 'Bullish', color: 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/25' }
+  if (thesis.includes('🔴')) return { label: 'Bearish', color: 'text-red-400 bg-red-500/10 border border-red-500/25' }
+  return null
+}
+
 // Inline tooltip — wraps any label text
 function Tooltip({ tip, children }: { tip: string; children: React.ReactNode }) {
   return (
@@ -349,6 +355,7 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
 
   const d = card.data
   const analyst = analystLabel(d.recommendation)
+  const thesis = thesisBadge(d.thesis ?? '')
   const [showChart, setShowChart] = useState(false)
   // Live price overrides card data when market is open
   const displayPrice = livePrice?.price ?? d.price
@@ -373,6 +380,11 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
               {analyst && (
                 <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${analyst.color}`}>
                   {analyst.label}
+                </span>
+              )}
+              {thesis && (
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${thesis.color}`}>
+                  {thesis.label}
                 </span>
               )}
               {!d.isProfitable && (
