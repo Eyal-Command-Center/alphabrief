@@ -984,7 +984,7 @@ function MyStocksContent() {
                       'Analyst consensus',
                       'Live price + chart',
                       'Save your watchlist',
-                      'Daily / weekly digest',
+                      'Earnings calendar',
                     ].map(f => (
                       <li key={f} className="flex items-start gap-2 text-xs text-slate-400">
                         <span className="text-emerald-500 mt-0.5 shrink-0">✓</span>
@@ -1008,8 +1008,8 @@ function MyStocksContent() {
                   </div>
                   <ul className="space-y-4 flex-1">
                     {[
-                      { text: 'Thesis alerts', sub: 'Email the moment a thesis flips 🟢→🔴' },
-                      { text: 'Thesis watchlist', sub: 'Monitor up to 20 tickers for changes' },
+                      { text: 'Thesis alerts', sub: 'Email the moment a thesis flips 🟢→🔴 (up to 10 tickers)' },
+                      { text: 'Daily / weekly digest', sub: 'Your watchlist delivered to your inbox' },
                     ].map(f => (
                       <li key={f.text} className="flex items-start gap-2">
                         <span className="text-emerald-400 mt-0.5 shrink-0 text-xs">✦</span>
@@ -1020,13 +1020,13 @@ function MyStocksContent() {
                       </li>
                     ))}
                   </ul>
+                  <p className="text-center text-slate-600 text-[11px] mt-5">Sign up first, upgrade in settings</p>
                   <button
                     onClick={() => { setShowAuthForm(true); setAuthMode('signup') }}
-                    className="mt-5 w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-2.5 rounded-xl transition-all"
+                    className="mt-2 w-full bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold py-2.5 rounded-xl transition-all"
                   >
                     Get thesis alerts →
                   </button>
-                  <p className="text-center text-slate-600 text-[11px] mt-2">Sign up first, upgrade in settings</p>
                 </div>
 
               </div>

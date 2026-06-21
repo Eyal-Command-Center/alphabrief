@@ -451,68 +451,81 @@ function SettingsContent() {
                   Price & performance for your stocks, delivered to your inbox.
                 </p>
               </div>
-              {loadingPrefs ? (
-                <div className="w-11 h-6 rounded-full bg-slate-700 animate-pulse shrink-0 ml-6 mt-0.5" />
-              ) : (
-                <button
-                  onClick={() => setEmailEnabled(v => !v)}
-                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-6 mt-0.5 ${emailEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${emailEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
+              {isPro && (
+                loadingPrefs ? (
+                  <div className="w-11 h-6 rounded-full bg-slate-700 animate-pulse shrink-0 ml-6 mt-0.5" />
+                ) : (
+                  <button
+                    onClick={() => setEmailEnabled(v => !v)}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-6 mt-0.5 ${emailEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${emailEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                )
               )}
             </div>
 
-            <div className={`mt-5 transition-all ${emailEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">Frequency</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setFrequency('daily')}
-                  className={`flex-1 rounded-xl border px-4 py-3 text-left transition-all ${
-                    frequency === 'daily' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/8 bg-slate-800/50 hover:border-white/20'
-                  }`}
-                >
-                  <p className={`text-sm font-semibold ${frequency === 'daily' ? 'text-emerald-300' : 'text-white'}`}>Daily</p>
-                  <p className="text-slate-500 text-xs mt-0.5">Every trading day, 9am ET</p>
-                </button>
-                <button
-                  onClick={() => setFrequency('weekly')}
-                  className={`flex-1 rounded-xl border px-4 py-3 text-left transition-all ${
-                    frequency === 'weekly' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/8 bg-slate-800/50 hover:border-white/20'
-                  }`}
-                >
-                  <p className={`text-sm font-semibold ${frequency === 'weekly' ? 'text-emerald-300' : 'text-white'}`}>Weekly</p>
-                  <p className="text-slate-500 text-xs mt-0.5">Every Monday, 9am ET</p>
-                </button>
+            {!isPro ? (
+              <div className="mt-4 flex items-center gap-3 bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3">
+                <span className="text-slate-500 text-sm shrink-0">🔒</span>
+                <p className="text-slate-500 text-sm">
+                  Email reports are a <span className="text-emerald-400 font-semibold">Pro</span> feature. Upgrade above to enable daily or weekly delivery.
+                </p>
               </div>
+            ) : (
+              <>
+                <div className={`mt-5 transition-all ${emailEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+                  <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">Frequency</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setFrequency('daily')}
+                      className={`flex-1 rounded-xl border px-4 py-3 text-left transition-all ${
+                        frequency === 'daily' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/8 bg-slate-800/50 hover:border-white/20'
+                      }`}
+                    >
+                      <p className={`text-sm font-semibold ${frequency === 'daily' ? 'text-emerald-300' : 'text-white'}`}>Daily</p>
+                      <p className="text-slate-500 text-xs mt-0.5">Every trading day, 9am ET</p>
+                    </button>
+                    <button
+                      onClick={() => setFrequency('weekly')}
+                      className={`flex-1 rounded-xl border px-4 py-3 text-left transition-all ${
+                        frequency === 'weekly' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/8 bg-slate-800/50 hover:border-white/20'
+                      }`}
+                    >
+                      <p className={`text-sm font-semibold ${frequency === 'weekly' ? 'text-emerald-300' : 'text-white'}`}>Weekly</p>
+                      <p className="text-slate-500 text-xs mt-0.5">Every Monday, 9am ET</p>
+                    </button>
+                  </div>
 
-              <div className="mt-4 bg-slate-800/50 border border-white/5 rounded-xl p-4">
-                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">What you&apos;ll receive</p>
-                <ul className="space-y-1.5">
-                  {[
-                    'Current price & daily % change for each of your stocks',
-                    'Which of your stocks moved most since last session',
-                    'A direct link to open your full AlphaBrief cards',
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-slate-300 text-sm">
-                      <span className="text-emerald-600 mt-0.5 shrink-0">▸</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+                  <div className="mt-4 bg-slate-800/50 border border-white/5 rounded-xl p-4">
+                    <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">What you&apos;ll receive</p>
+                    <ul className="space-y-1.5">
+                      {[
+                        'Current price & daily % change for each of your stocks',
+                        'Which of your stocks moved most since last session',
+                        'A direct link to open your full AlphaBrief cards',
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-slate-300 text-sm">
+                          <span className="text-emerald-600 mt-0.5 shrink-0">▸</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
 
-            <div className="mt-5 flex items-center gap-3">
-              <button
-                onClick={handleSave}
-                disabled={saving || loadingPrefs}
-                className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold px-5 py-2 rounded-xl text-sm transition-all"
-              >
-                {saving ? 'Saving…' : 'Save preferences'}
-              </button>
-              {saved && <span className="text-emerald-400 text-sm">✓ Saved</span>}
-            </div>
+                <div className="mt-5 flex items-center gap-3">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || loadingPrefs}
+                    className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold px-5 py-2 rounded-xl text-sm transition-all"
+                  >
+                    {saving ? 'Saving…' : 'Save preferences'}
+                  </button>
+                  {saved && <span className="text-emerald-400 text-sm">✓ Saved</span>}
+                </div>
+              </>
+            )}
           </div>
 
         </div>
