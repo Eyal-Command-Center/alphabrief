@@ -75,22 +75,47 @@ export async function GET(req: Request) {
   const isProfitable = (eps != null && eps > 0) || (peValue != null && peValue > 0)
   const peDisplay = peValue && peValue > 0 ? peValue.toFixed(1) : null
 
-  const prompt = `You are a sharp equity analyst writing for a retail investor. Given this data on ${safeSymbol} (${profile.name ?? safeSymbol}), return a JSON object with exactly these four fields:
+  // Revenue data
+  const revenueGrowthRaw = metrics?.metric?.revenueGrowthTTMYoy
+  const revenueGrowth = revenueGrowthRaw != null ? `${revenueGrowthRaw > 0 ? '+' : ''}${revenueGrowthRaw.toFixed(0)}% YoY` : null
+  const revenueTTMRaw = metrics?.metric?.revenueTTM // in millions
+  const revenueTTM = revenueTTMRaw != null
+    ? revenueTTMRaw >= 1000 ? `$${(revenueTTMRaw / 1000).toFixed(2)}B TTM` : `$${revenueTTMRaw.toFixed(0)}M TTM`
+    : null
+
+  // IPO recency — if listed within 18 months, 52-week range is unreliable as a signal
+  const ipoDateStr: string | undefined = profile.ipo
+  const ipoDate = ipoDateStr ? new Date(ipoDateStr) : null
+  const monthsSinceIpo = ipoDate ? (Date.now() - ipoDate.getTime()) / (1000 * 60 * 60 * 24 * 30) : null
+  const isRecentListing = monthsSinceIpo != null && monthsSinceIpo < 18
+
+  // Build pre-profit venture context block
+  const preProfitBlock = !isProfitable ? `
+IMPORTANT — PRE-PROFIT / VENTURE-STAGE COMPANY. Apply a venture frame, not a value/profitability frame:
+- Negative EPS and "valued on future breakthroughs" are the ENTRY CRITERIA for this category, not bear signals. Do not cite them as negatives.
+- Never use pre-profit status, negative EPS, or absence of P/E as a reason for a negative thesis.
+- The relevant factors are: revenue trajectory (growing fast from a small base?), cash position vs. burn, key binary catalysts (funding decisions, regulatory approvals, partnerships), dilution risk (share issuance, ATM facilities), and moat development.
+- A 🔴 Negative thesis is valid only if the core value-creation thesis is broken — e.g. a key catalyst definitively failed, cash runway is critically short, or a structural competitive threat emerged. Not because the company is pre-profit.${isRecentListing ? `
+- LISTING CONTEXT: This stock listed/de-SPAC'd ~${Math.round(monthsSinceIpo!)} months ago (${ipoDateStr}). The 52-week high/low range is dominated by post-listing volatility, not 12 months of operating performance. Do NOT interpret the 52-week drawdown as evidence of business deterioration. The range reflects the post-listing derating, not the company's trajectory.` : ''}
+` : ''
+
+  const prompt = `You are a sharp equity analyst writing for a sophisticated retail investor. Given this data on ${safeSymbol} (${profile.name ?? safeSymbol}), return a JSON object with exactly these five fields:
 
 {
   "about": "One sentence on what this company actually does — in plain English, not just the industry label. E.g. 'Operates the world's largest e-commerce marketplace and cloud infrastructure platform (AWS).' Be specific.",
   "quickTake": "2-3 sentences on the stock's current situation — price action, what's driving it, anything worth flagging. Use ⚠️ for risks, ✅ for positives.",
   "thesis": "Start with exactly one of: 🟢 Positive, 🔴 Negative, or 🟡 No change — then one sentence on the fundamental story and whether anything is shifting.",
   "catalystEvent": "One sentence on the next scheduled event. Use the earnings data provided. If nothing notable: 'Nothing notable until next earnings.'",
-  "catalystDriver": "One sentence on the current fundamental force driving this stock's momentum or valuation — the underlying theme or tailwind that's actually moving it. E.g. 'AI infrastructure buildout is driving hyperscaler GPU demand.' Every company has one — never leave this blank."
+  "catalystDriver": "One sentence on the current fundamental force driving this stock's momentum or valuation — the underlying theme or tailwind that's actually moving it. Every company has one — never leave this blank."
 }
-
+${preProfitBlock}
 Data:
 - Price: $${quote.c} (${quote.dp > 0 ? '+' : ''}${quote.dp?.toFixed(2)}% today — use this exact figure)
 - Market cap: ${profile.marketCapitalization ? '$' + (profile.marketCapitalization / 1000).toFixed(1) + 'B' : 'N/A'}
-- Profitable: ${isProfitable ? 'Yes' : 'No — pre-profit company, EPS is negative or zero'}
-- PE ratio: ${peDisplay ? peDisplay : 'NOT APPLICABLE — do not cite PE, the company has no positive earnings'}
-- 52w high/low: $${metrics?.metric?.['52WeekHigh'] ?? 'N/A'} / $${metrics?.metric?.['52WeekLow'] ?? 'N/A'}
+- Profitable: ${isProfitable ? 'Yes' : 'No — pre-profit, expected for this stage'}
+- PE ratio: ${peDisplay ? peDisplay : 'N/A — pre-profit, do not cite'}
+- Revenue: ${revenueTTM ?? 'N/A'}${revenueGrowth ? ` (${revenueGrowth})` : ''}
+- 52w high/low: $${metrics?.metric?.['52WeekHigh'] ?? 'N/A'} / $${metrics?.metric?.['52WeekLow'] ?? 'N/A'}${isRecentListing ? ' (recent listing — see context above)' : ''}
 - Analyst consensus: ${latestRec ? `${latestRec.buy} buy / ${latestRec.hold} hold / ${latestRec.sell} sell` : 'N/A'}
 - Earnings: ${catalystHint}
 - Recent headlines: ${news.slice(0, 2).map((n: { headline: string }) => n.headline).join(' | ')}
@@ -98,8 +123,7 @@ Data:
 Rules:
 - Be direct. No filler. No "it's worth noting", "it's important to", "notably".
 - Use the exact price/change numbers provided.
-- If the company is pre-profit, never cite PE. The relevant valuation framing is EV/Sales or simply that the stock is priced on future growth, not current earnings.
-- On analyst consensus: high buy ratings on a speculative or pre-profit name often mean the name is already institutionally discovered and fully covered — this is not automatically a positive signal. Flag it as saturation if relevant, not as conviction.
+- On analyst consensus: high buy ratings on a speculative name often mean institutional discovery is complete, not that upside is guaranteed. Flag saturation if relevant.
 - Return only valid JSON. No markdown code fences. No extra text.`
 
   const message = await anthropic.messages.create({
