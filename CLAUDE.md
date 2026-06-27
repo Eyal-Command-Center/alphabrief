@@ -38,11 +38,14 @@ The sandbox **cannot push to GitHub**. Always:
 ---
 
 ## Supabase Tables — EXACT NAMES
-- `portfolios` — columns: `user_id`, `tickers` (text[]), `updated_at`
+- `portfolios` — columns: `user_id`, `tickers` (text[]), `updated_at`, `is_pro`, `alerts_enabled`, `user_email`
 - `brief_feedback` — columns: `symbol`, `user_id` (nullable), `rating` ('up'|'down') ← **NOT `feedback`**
-- `profiles` — columns: `id`, `is_pro`, `email_enabled`, `email_frequency`, `ls_customer_id`, `ls_subscription_id`
-- `alert_tickers` — columns: `user_id`, `tickers` (text[])
-- `thesis_history` — columns: `user_id`, `symbol`, `thesis`, `checked_at`
+- `briefs` — cached brief data
+- `cache` — server-side cache table (service role only, RLS enabled, no client policies)
+- `promo_codes` — promo code redemption (service role only, RLS enabled, no client policies)
+- `thesis_snapshots` — columns: `user_id`, `symbol`, `sentiment`, `thesis`, `analyst_rating`, `checked_at`
+
+**Tables that do NOT exist:** `profiles`, `alert_tickers`, `thesis_history` — do not reference these.
 
 ---
 
