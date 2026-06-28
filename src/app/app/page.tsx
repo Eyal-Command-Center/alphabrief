@@ -482,7 +482,14 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
         if (!total) return null
         return (
           <div className="mb-4">
-            <p className="text-slate-600 text-xs font-semibold uppercase tracking-widest mb-2">Analyst Ratings</p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-slate-600 text-xs font-semibold uppercase tracking-widest">Analyst Ratings</p>
+              {d.recommendationDate && (() => {
+                const days = Math.round((Date.now() - new Date(d.recommendationDate!).getTime()) / (1000 * 60 * 60 * 24))
+                const label = new Date(d.recommendationDate!).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                return <span className={`text-xs ${days > 90 ? 'text-amber-400/70' : 'text-slate-600'}`}>· updated {label}</span>
+              })()}
+            </div>
             <div className="flex h-1.5 rounded-full overflow-hidden gap-px mb-1.5">
               {totalBuy > 0 && <div style={{ width: `${(totalBuy / total) * 100}%` }} className="bg-emerald-500" />}
               {hold > 0 && <div style={{ width: `${(hold / total) * 100}%` }} className="bg-amber-400" />}
@@ -493,11 +500,6 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
               <span className="text-xs text-amber-400">{hold} Hold</span>
               <span className="text-xs text-red-400">{totalSell} Sell</span>
             </div>
-            {d.recommendationDate && (() => {
-              const days = Math.round((Date.now() - new Date(d.recommendationDate!).getTime()) / (1000 * 60 * 60 * 24))
-              if (days <= 90) return null
-              return <p className="text-[10px] text-amber-400/60 mt-1.5">⚠️ Consensus last updated {days}d ago</p>
-            })()}
           </div>
         )
       })()}
