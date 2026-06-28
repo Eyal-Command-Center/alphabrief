@@ -520,7 +520,7 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
                   <>
                     <p className="text-slate-300 text-sm leading-relaxed">{verdict}</p>
                     {risk && (
-                      <p className="text-slate-500 text-xs leading-relaxed mt-2 pt-2 border-t border-white/5">{risk}</p>
+                      <p className="text-slate-400 text-sm leading-relaxed mt-2 pt-2 border-t border-white/5">{risk}</p>
                     )}
                   </>
                 )
