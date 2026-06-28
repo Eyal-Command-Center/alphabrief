@@ -28,6 +28,8 @@ interface StockDetail {
   thesis: string
   catalystEvent: string
   catalystDriver: string
+  dataQuality?: 'strong' | 'moderate' | 'thin'
+  recommendationDate?: string | null
 }
 
 interface CardState {
@@ -60,6 +62,15 @@ function thesisBadge(thesis: string) {
   if (thesis.includes('🟢')) return { label: 'Bullish', color: 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/25' }
   if (thesis.includes('🔴')) return { label: 'Bearish', color: 'text-red-400 bg-red-500/10 border border-red-500/25' }
   return null
+}
+
+// Split thesis into verdict + risk sentence for richer display
+function splitThesis(thesis: string): { verdict: string; risk: string | null } {
+  const idx = thesis.search(/ (Risk:|Watch for:)/)
+  if (idx !== -1) {
+    return { verdict: thesis.slice(0, idx).trim(), risk: thesis.slice(idx + 1).trim() }
+  }
+  return { verdict: thesis, risk: null }
 }
 
 // Inline tooltip — wraps any label text
@@ -392,6 +403,11 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
                   Pre-profit
                 </span>
               )}
+              {d.dataQuality === 'thin' && (
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full text-slate-400 bg-slate-700/60 border border-white/10" title="Limited revenue and analyst data — AI output may be less precise">
+                  Limited data
+                </span>
+              )}
             </div>
             <p className="text-slate-400 text-sm truncate">{d.name}</p>
             {d.sector && <p className="text-slate-600 text-xs mt-0.5 truncate">{d.sector}</p>}
@@ -477,6 +493,11 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
               <span className="text-xs text-amber-400">{hold} Hold</span>
               <span className="text-xs text-red-400">{totalSell} Sell</span>
             </div>
+            {d.recommendationDate && (() => {
+              const days = Math.round((Date.now() - new Date(d.recommendationDate!).getTime()) / (1000 * 60 * 60 * 24))
+              if (days <= 90) return null
+              return <p className="text-[10px] text-amber-400/60 mt-1.5">⚠️ Consensus last updated {days}d ago</p>
+            })()}
           </div>
         )
       })()}
@@ -487,11 +508,21 @@ function StockCard({ card, livePrice }: { card: CardState; livePrice?: { price: 
           {d.thesis && (
             <div className="bg-slate-800/40 border border-white/5 rounded-xl p-3.5">
               <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-1.5">
-                <Tooltip tip="The fundamental investment case — is the core reason to own this stock getting stronger, weaker, or unchanged? Starts with 🟢 Positive, 🔴 Negative, or 🟡 No change.">
+                <Tooltip tip="The fundamental investment case — is the core reason to own this stock getting stronger, weaker, or unchanged? Starts with 🟢 Positive, 🔴 Negative, or 🟡 Mixed.">
                   Thesis Check
                 </Tooltip>
               </p>
-              <p className="text-slate-300 text-sm leading-relaxed">{d.thesis}</p>
+              {(() => {
+                const { verdict, risk } = splitThesis(d.thesis)
+                return (
+                  <>
+                    <p className="text-slate-300 text-sm leading-relaxed">{verdict}</p>
+                    {risk && (
+                      <p className="text-slate-500 text-xs leading-relaxed mt-2 pt-2 border-t border-white/5">{risk}</p>
+                    )}
+                  </>
+                )
+              })()}
             </div>
           )}
           {(d.catalystEvent || d.catalystDriver) && (
