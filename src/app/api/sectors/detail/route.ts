@@ -51,29 +51,35 @@ export async function GET(req: Request) {
 
   const fetches = await Promise.all(
     SECTORS.map(async (s) => {
-      const [quoteRes, newsRes] = await Promise.all([
+      const [quoteRes, newsRes, metricsRes] = await Promise.all([
         fetch(`https://finnhub.io/api/v1/quote?symbol=${s.etf}&token=${FINNHUB_TOKEN}`),
         fetch(`https://finnhub.io/api/v1/company-news?symbol=${s.etf}&from=${weekAgo}&to=${today}&token=${FINNHUB_TOKEN}`),
+        fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${s.etf}&metric=all&token=${FINNHUB_TOKEN}`),
       ])
-      const [quote, newsRaw] = await Promise.all([quoteRes.json(), newsRes.json()])
-      const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 2) : []
-      return { ...s, quote, news }
+      const [quote, newsRaw, metrics] = await Promise.all([quoteRes.json(), newsRes.json(), metricsRes.json()])
+      const news = Array.isArray(newsRaw) ? newsRaw.slice(0, 3) : []
+      return { ...s, quote, news, metrics }
     })
   )
 
   // Build one prompt for all 7 sectors
-  const sectorBlocks = fetches.map(s =>
-    `${s.name} (${s.etf}): $${s.quote.c} (${s.quote.dp > 0 ? '+' : ''}${s.quote.dp?.toFixed(2)}% today)
+  const sectorBlocks = fetches.map(s => {
+    const mtd = s.metrics?.metric?.monthToDatePriceReturnDaily
+    const ytd = s.metrics?.metric?.yearToDatePriceReturnDaily
+    const mtdStr = mtd != null ? `${mtd > 0 ? '+' : ''}${mtd.toFixed(1)}% MTD` : null
+    const ytdStr = ytd != null ? `${ytd > 0 ? '+' : ''}${ytd.toFixed(1)}% YTD` : null
+    const perf = [mtdStr, ytdStr].filter(Boolean).join(' | ')
+    return `${s.name} (${s.etf}): $${s.quote.c} | today: ${s.quote.dp > 0 ? '+' : ''}${s.quote.dp?.toFixed(2)}%${perf ? ` | ${perf}` : ''}
 Headlines: ${s.news.map((n: { headline: string }) => n.headline).join(' | ') || 'None'}`
-  ).join('\n\n')
+  }).join('\n\n')
 
-  const prompt = `You are a sharp macro analyst. Given today's ETF data for 7 US equity sectors, return a single JSON object where each key is the sector key below, and each value has exactly these fields:
+  const prompt = `You are a sharp macro analyst writing sector-level views for a sophisticated retail investor. Given ETF price and performance data for 7 US equity sectors, return a single JSON object where each key is the sector key below, and each value has exactly these fields:
 
 {
-  "thesis": "Start with 🟢 Positive, 🔴 Negative, or 🟡 Neutral — then one sentence on direction and key risk/opportunity.",
+  "thesis": "Start with 🟢 Positive, 🔴 Negative, or 🟡 Neutral — then one sentence on the sector's structural direction and the key force driving it.",
   "drivers": ["driver 1 — one sentence", "driver 2 — one sentence", "driver 3 — one sentence"],
-  "catalyst": "One sentence on the most important upcoming event for this sector.",
-  "outlook": "One sentence on what would change the thesis."
+  "catalyst": "One sentence on the most important upcoming event or data print for this sector.",
+  "outlook": "One sentence on what would change the thesis — the specific trigger that shifts the verdict."
 }
 
 Sector keys: technology, healthcare, financials, energy, consumer-disc, industrials, comm-services
@@ -82,13 +88,17 @@ Data:
 ${sectorBlocks}
 
 Rules:
+- The thesis must reflect structural, sector-wide forces: earnings revision trends, capex cycles, interest rate sensitivity, regulatory environment, or monetization pace. It must NOT be derived from today's price move.
+- Today's % change is context only. A -1% day does not make a thesis negative. A +2% day does not make it positive. Use MTD and YTD for trend direction — not the daily blip.
+- Each driver must describe a sector-wide force. If you reference a specific company, it must explicitly illustrate a broader sector trend, not serve as the thesis itself. "Alphabet losing AI talent" is not a Technology sector driver. "Hyperscalers accelerating AI infrastructure capex" is.
+- Do not use vague market sentiment language ("institutional repositioning underway", "market warns of correction"). Name the specific structural force.
 - Be direct. No filler phrases.
 - drivers must be exactly 3 strings per sector.
 - Return only valid JSON. No markdown code fences. No extra text.`
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2000,
+    max_tokens: 2500,
     messages: [{ role: 'user', content: prompt }],
   })
 
