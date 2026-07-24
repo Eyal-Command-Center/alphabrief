@@ -3,10 +3,10 @@ const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
   LevelFormat, Header, Footer, PageNumber
-} = require('./node_modules/docx');
+} = require('docx');
 const fs = require('fs');
 
-const UPDATED = 'June 21, 2026';
+const UPDATED = 'July 24, 2026';
 const BORDER = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
 const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 
@@ -78,21 +78,21 @@ const overviewData = [
   ['Stack', 'Next.js App Router, React, TypeScript, Tailwind CSS v4'],
   ['Hosting', 'Vercel (hosting + cron jobs)'],
   ['Database / Auth', 'Supabase (PostgreSQL + Row-Level Security + SSR Auth)'],
-  ['Repo', 'Private GitHub — push via: cd ~/Desktop/alphabrief && git push'],
+  ['Repo', 'Private GitHub — push via: cd "$HOME/Desktop/TEAMs/Team Business/alphabrief" && git push'],
 ];
 
 const services = [
   ['Supabase', 'Authentication (SSR + Google OAuth) and PostgreSQL database hosting', 'Free tier', 'RLS enabled. Service role key NEVER exposed client-side. Google OAuth domain: alphabrief.io.'],
-  ['Anthropic Claude', 'AI-generated stock analysis: about, quickTake, thesis, catalystEvent, catalystDriver', 'Pay-per-use API', 'Model: claude-haiku-4-5-20251001. Max 500 tokens per card. Returns JSON only (no markdown fences).'],
+  ['Anthropic Claude', 'AI-generated stock analysis and portfolio briefs', 'Pay-per-use API', 'Per-card detail + thesis-alerts news classification: claude-haiku-4-5-20251001, max_tokens 650 (JSON only). Portfolio brief (/api/brief): claude-sonnet-4-5, max_tokens 2048 (markdown).'],
   ['Finnhub', 'Stock market data: company profile, quote, metrics, analyst recs, news, earnings, peers', 'Free tier', '7 parallel requests per card. US ticker filter applied. Symbol sanitized before every call.'],
   ['Massive.com (ex-Polygon.io)', 'Historical daily candles (chart) and live price snapshots', 'Free tier', 'api.polygon.io still resolves. Free plan: candles + snapshots only. Fundamentals require paid add-on ($29/mo) — NOT used.'],
   ['Lemon Squeezy', 'Subscription billing and payments for AlphaBrief Pro', 'Revenue-share (5%)', 'Pro variant ID: 1816532. Webhook via HMAC-SHA256 + crypto.timingSafeEqual. Handles checkout, cancel, subscription lifecycle.'],
   ['Resend', 'Transactional email: thesis-change alerts and daily/weekly brief emails', 'Free tier (100/day)', 'From: noreply@alphabrief.io. Used by /api/cron/thesis-alerts and /api/cron/email-report.'],
-  ['Vercel', 'Next.js hosting, edge network, and cron job execution', 'Pro plan', 'Cron routes protected by CRON_SECRET. Deploy on push to main.'],
+  ['Vercel', 'Next.js hosting, edge network, and cron job execution', 'Hobby (free) plan', 'Cron routes protected by CRON_SECRET. Deploy on push to main. Hobby: max 2 cron jobs; cron-run history retained ~12h in Observability (30-day needs paid Observability Plus).'],
 ];
 
 const envVars = [
-  ['ANTHROPIC_API_KEY', 'Anthropic', 'Server-side only. Used in /api/screener/detail.'],
+  ['ANTHROPIC_API_KEY', 'Anthropic', 'Server-side only. Used in /api/screener/detail, /api/brief, /api/cron/thesis-alerts.'],
   ['MASSIVE_API_KEY', 'Massive.com', 'Server-side only. Used in /api/chart and /api/prices.'],
   ['FINNHUB_API_KEY', 'Finnhub', 'Server-side only. Used in /api/screener/detail, /api/search, /api/earnings, /api/ipos.'],
   ['RESEND_API_KEY', 'Resend', 'Server-side only. Used in /api/cron/ routes.'],
@@ -106,37 +106,40 @@ const envVars = [
 ];
 
 const dbTables = [
-  ['portfolios', 'user_id, tickers (text[]), updated_at', 'Saved watchlist tickers per user.', 'Updated on every watchlist save.'],
+  ['portfolios', 'user_id, tickers (text[]), alert_tickers (text[]), is_pro, alerts_enabled, email_frequency (daily|weekly), user_email, lemon_subscription_id, updated_at', 'Central per-user state: watchlist + Pro alert config + subscription status.', 'Written on watchlist save, alert-ticker save, and Lemon Squeezy webhook.'],
   ['brief_feedback', 'symbol, user_id (nullable), rating (up|down)', 'Thumbs feedback on stock cards.', "WARNING: named brief_feedback, NOT feedback. user_id nullable — guests can submit."],
-  ['profiles', 'id, is_pro, email_enabled, email_frequency, ls_customer_id, ls_subscription_id', 'User profile and subscription status.', 'Populated by Lemon Squeezy webhook. is_pro gates Pro features. ls_* fields store LS IDs.'],
-  ['alert_tickers', 'user_id, tickers (text[])', 'Tickers for Pro thesis-change email alerts.', 'Read by /api/cron/thesis-alerts daily.'],
-  ['thesis_history', 'user_id, symbol, thesis, checked_at', 'Last thesis per user per ticker for change detection.', 'Cron compares new thesis to stored. Polarity flip triggers email alert.'],
+  ['briefs', 'id, tickers (text[]), content, created_at', 'Saved portfolio briefs, rendered publicly at /brief/[id].', 'Read by the shared-brief page.'],
+  ['thesis_snapshots', 'user_id, symbol, sentiment, thesis, analyst_rating, last_news_headlines, checked_at', 'Last thesis snapshot per user per ticker for change detection.', 'thesis-alerts cron compares fresh thesis to stored; polarity flip triggers email.'],
+  ['cache', 'service-role only', 'Server-side cache table.', 'RLS enabled, no client policies.'],
+  ['promo_codes', 'service-role only', 'Promo code redemption.', 'RLS enabled, no client policies.'],
 ];
 
 const routes = [
-  ['/api/screener/detail', 'GET', 'None', 'Main stock card. 7 Finnhub reqs parallel + Claude Haiku. 20-min server cache.'],
+  ['/api/screener/detail', 'GET', 'None', 'Main stock card. 7 Finnhub reqs parallel + Claude Haiku (max_tokens 650). 20-min in-process Map cache (not the Supabase cache table).'],
   ['/api/search', 'GET', 'None', 'Ticker search/autocomplete via Finnhub.'],
+  ['/api/screener/search', 'GET', 'None', 'Ticker search via Finnhub — Common Stock only, no dotted symbols. Coexists with /api/search.'],
   ['/api/chart', 'GET', 'None', '3M candles + EMA 200 from Massive. Fetches 2Y, trims to last 63 days. 1hr cache.'],
   ['/api/prices', 'GET', 'None', 'Live price snapshot from Massive. Market hours only (Mon-Fri 13:30-21:00 UTC). no-store.'],
   ['/api/feedback', 'POST', 'Optional', 'Inserts into brief_feedback. Works for unauthenticated guests.'],
-  ['/api/brief', 'POST', 'Required', 'Batch brief generation. Requires Supabase session.'],
+  ['/api/brief', 'POST', 'Required', 'Batch portfolio brief (claude-sonnet-4-5, markdown). Requires Supabase session.'],
   ['/api/email-prefs', 'GET/POST', 'Required', 'Read/write user email preferences (enabled, frequency).'],
-  ['/api/alert-tickers', 'GET/POST', 'Required', 'Read/write Pro user thesis alert watchlist.'],
+  ['/api/alert-tickers', 'GET/POST', 'Required', 'Read/write Pro thesis-alert watchlist — portfolios.alert_tickers (capped at 10).'],
   ['/api/earnings', 'GET', 'None', 'Earnings calendar data from Finnhub.'],
   ['/api/macro', 'GET', 'None', 'Macro economic indicators.'],
   ['/api/sectors/detail', 'GET', 'None', 'Sector-level data and performance.'],
   ['/api/ipos', 'GET', 'None', 'IPO pipeline from Finnhub.'],
   ['/api/lemon/checkout', 'POST', 'Required', 'Creates Lemon Squeezy checkout session for Pro upgrade.'],
   ['/api/lemon/cancel', 'POST', 'Required', 'Cancels active Lemon Squeezy subscription.'],
-  ['/api/lemon/webhook', 'POST', 'HMAC-SHA256', 'Lemon Squeezy lifecycle events. Updates profiles table. Timing-safe compare.'],
+  ['/api/lemon/webhook', 'POST', 'HMAC-SHA256', 'Lemon Squeezy lifecycle events. Updates portfolios (is_pro, lemon_subscription_id). Timing-safe compare.'],
   ['/api/promo/redeem', 'POST', 'Required', 'Redeems promo code. Input max 50 chars.'],
-  ['/api/cron/thesis-alerts', 'GET', 'CRON_SECRET', 'Daily: checks thesis for each alert ticker, emails user if polarity flipped.'],
-  ['/api/cron/email-report', 'GET', 'CRON_SECRET', 'Daily/weekly: sends personalized portfolio email brief via Resend.'],
+  ['/api/cron/thesis-alerts', 'GET', 'CRON_SECRET', 'Weekday sweep: checks thesis per alert ticker, emails user if polarity flipped. Invocation runs every scheduled time regardless of whether any email sends.'],
+  ['/api/cron/email-report', 'GET', 'CRON_SECRET', 'Daily/weekly: sends personalized portfolio email brief via Resend. Weekly variant sends on Mondays only.'],
   ['/api/waitlist', 'POST', 'None', 'Captures waitlist signups. Stores in Supabase.'],
 ];
 
 const arch = [
-  ['Stock card pipeline', '7 Finnhub endpoints fetched in parallel per card: profile2, quote, metrics, recommendations, news, earnings, peers. Claude Haiku generates 5 AI fields. 20-min in-memory server cache.'],
+  ['Stock card pipeline', '7 Finnhub endpoints fetched in parallel per card: profile2, quote, metrics, recommendations, news, earnings, peers. Claude Haiku generates 5 AI fields (max_tokens 650). 20-min in-process Map cache — per serverless instance, wiped on cold start (NOT the Supabase cache table).'],
+  ['Model usage', 'Per-card detail + thesis-alerts news classification: Haiku (claude-haiku-4-5-20251001). Portfolio brief /api/brief: claude-sonnet-4-5 (max_tokens 2048). Pre-profit companies get a venture-frame prompt; stale analyst consensus (>90d) and recent listings (<18mo) flagged; dataQuality strong/moderate/thin returned.'],
   ['isProfitable logic', '(eps > 0) || (peValue > 0). P/E is more reliable than EPS for large caps like Amazon.'],
   ['Peers filter', 'US-listed only: /^[A-Z]{1,5}$/ or /^[A-Z]{1,4}\\.[A-Z]$/. Blocks .TO, .AX, .L etc.'],
   ['Symbol sanitization', 'Applied before every API call: /^[A-Z0-9.\\-]{1,10}$/. Rejects anything outside this pattern.'],
@@ -144,10 +147,10 @@ const arch = [
   ['Live prices', 'Massive snapshot polled every 10s during market hours. Check: Mon-Fri 13:30-21:00 UTC. Green pulsing dot + "Live" nav indicator.'],
   ['Client cache', 'localStorage key ab_stock_{SYMBOL} with 20-min TTL. Email prefs: ab_email_prefs. Clear manually to test fresh data.'],
   ['Auth pattern', 'SSR auth via @supabase/ssr. Server: createServerClient + cookies(). Admin: createClient with service role key. Never expose service role key client-side.'],
-  ['Lemon Squeezy webhook', 'crypto.timingSafeEqual for HMAC-SHA256 (NOT ===). Hex comparison. Updates profiles on subscription events.'],
-  ['Thesis alert cron', 'Daily: reads alert_tickers, generates fresh thesis, compares to thesis_history. Polarity flip (positive<>negative) triggers Resend email.'],
+  ['Lemon Squeezy webhook', 'crypto.timingSafeEqual for HMAC-SHA256 (NOT ===). Hex comparison. Updates portfolios on subscription events.'],
+  ['Thesis alert cron', 'Weekday sweep: reads portfolios (alert_tickers), generates fresh thesis, compares to thesis_snapshots. Polarity flip (positive<>negative) triggers Resend email. Snapshot updated each run.'],
   ['Massive.com notes', 'Rebranded from Polygon.io Oct 2025. api.polygon.io still resolves. Free plan: candles + snapshots. Fundamentals need paid add-on.'],
-  ['Git workflow', 'Sandbox cannot push to GitHub. Always tell Eyal: cd ~/Desktop/alphabrief && git push. Lock fix: rm -f .git/HEAD.lock .git/index.lock.'],
+  ['Git workflow', 'Sandbox cannot push to GitHub. Always tell Eyal: cd "$HOME/Desktop/TEAMs/Team Business/alphabrief" && git push. Lock fix: rm -f .git/HEAD.lock .git/index.lock.'],
 ];
 
 const pages = [
@@ -157,6 +160,8 @@ const pages = [
   ['/app/calendar', 'src/app/app/calendar/page.tsx', 'Earnings calendar.'],
   ['/app/ipos', 'src/app/app/ipos/page.tsx', 'IPO pipeline.'],
   ['/app/sectors', 'src/app/app/sectors/page.tsx', 'Sector view.'],
+  ['/app/screener', 'src/app/app/screener/page.tsx', 'Legacy redirect → /app.'],
+  ['/brief/[id]', 'src/app/brief/[id]/page.tsx', 'Public shared-brief reader — reads briefs table, renders markdown.'],
   ['/privacy', 'src/app/privacy/page.tsx', 'Privacy Policy. Last updated June 2026.'],
   ['/terms', 'src/app/terms/page.tsx', 'Terms of Service. Last updated June 2026.'],
 ];

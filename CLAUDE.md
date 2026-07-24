@@ -14,7 +14,7 @@ AlphaBrief (alphabrief.io) is an AI-powered stock research tool. Users type a ti
 ## Git Workflow — CRITICAL
 The sandbox **cannot push to GitHub**. Always:
 1. Make and commit changes in bash
-2. Tell Eyal the exact command to run in his terminal: `cd ~/Desktop/alphabrief && git push`
+2. Tell Eyal the exact command to run in his terminal: `cd "$HOME/Desktop/TEAMs/Team Business/alphabrief" && git push`
 3. If git lock errors appear: `rm -f .git/HEAD.lock .git/index.lock` before committing
 
 ---
@@ -38,9 +38,9 @@ The sandbox **cannot push to GitHub**. Always:
 ---
 
 ## Supabase Tables — EXACT NAMES
-- `portfolios` — columns: `user_id`, `tickers` (text[]), `updated_at`, `is_pro`, `alerts_enabled`, `user_email`
+- `portfolios` — columns: `user_id`, `tickers` (text[]), `alert_tickers` (text[], Pro alert watchlist, capped 10), `updated_at`, `is_pro`, `alerts_enabled`, `user_email`, `email_frequency` ('daily'|'weekly'), `lemon_subscription_id`
 - `brief_feedback` — columns: `symbol`, `user_id` (nullable), `rating` ('up'|'down') ← **NOT `feedback`**
-- `briefs` — cached brief data
+- `briefs` — shared/cached briefs: columns `id`, `tickers` (text[]), `content`, `created_at` (rendered publicly at `/brief/[id]`)
 - `cache` — server-side cache table (service role only, RLS enabled, no client policies)
 - `promo_codes` — promo code redemption (service role only, RLS enabled, no client policies)
 - `thesis_snapshots` — columns: `user_id`, `symbol`, `sentiment`, `thesis`, `analyst_rating`, `checked_at`
@@ -53,8 +53,9 @@ The sandbox **cannot push to GitHub**. Always:
 
 | Route | Method | Auth | Purpose |
 |---|---|---|---|
-| `/api/screener/detail` | GET | None | Main stock card data. Calls Finnhub (7 parallel) + Claude Haiku. 20-min server cache. |
+| `/api/screener/detail` | GET | None | Main stock card data. Calls Finnhub (7 parallel) + Claude Haiku. 20-min in-process `Map` cache (see below). |
 | `/api/search` | GET | None | Ticker search/autocomplete via Finnhub |
+| `/api/screener/search` | GET | None | Ticker search via Finnhub (Common Stock only, no dotted symbols) — coexists with `/api/search` |
 | `/api/chart` | GET | None | 3M candles + EMA 200 from Massive. Fetches 2Y, trims to last 63 days. 1hr cache. |
 | `/api/prices` | GET | None | Live price snapshot from Massive. Market hours only (Mon-Fri ~13:30-21:00 UTC). |
 | `/api/feedback` | POST | Optional | Inserts into `brief_feedback`. Works for guests too. |
@@ -84,7 +85,14 @@ The sandbox **cannot push to GitHub**. Always:
 - **isProfitable logic:** `(eps > 0) || (peValue > 0)` — P/E is more reliable than EPS for large caps like Amazon
 - **Peers filter:** Only US tickers — `/^[A-Z]{1,5}$/.test(t) || /^[A-Z]{1,4}\.[A-Z]$/.test(t)` — blocks .TO, .AX etc.
 - **Symbol sanitization:** `/^[A-Z0-9.\-]{1,10}$/` — applied everywhere
-- Max 500 Claude tokens, returns JSON only (no markdown fences)
+- Model `claude-haiku-4-5-20251001`, `max_tokens: 650`, returns JSON only (no markdown fences)
+- **Cache is an in-process `Map`** (20-min TTL) — NOT the Supabase `cache` table; per-serverless-instance, wiped on cold start
+- **Prompt adds a venture frame** for pre-profit companies (don't cite negative EPS / no-P/E as bearish); flags stale analyst consensus (>90 days) and recent listings (<18 months → 52w range unreliable)
+- Returns a `dataQuality` signal — `strong` / `moderate` / `thin` — from revenue + analyst-coverage presence
+
+### Model usage — two different models
+- Per-card `/api/screener/detail` **and** thesis-alerts news classification → **Haiku** (`claude-haiku-4-5-20251001`)
+- Portfolio morning brief `/api/brief` → **`claude-sonnet-4-5`** (`max_tokens: 2048`), markdown output — heavier model for multi-stock synthesis
 
 ### Chart (`/api/chart`)
 - Massive endpoint: `GET https://api.massive.com/v2/aggs/ticker/{symbol}/range/1/day/{from}/{to}`
@@ -131,6 +139,8 @@ The sandbox **cannot push to GitHub**. Always:
 | `/app/calendar` | `src/app/app/calendar/page.tsx` | Earnings calendar |
 | `/app/ipos` | `src/app/app/ipos/page.tsx` | IPO pipeline |
 | `/app/sectors` | `src/app/app/sectors/page.tsx` | Sector view |
+| `/app/screener` | `src/app/app/screener/page.tsx` | Redirect → `/app` (legacy) |
+| `/brief/[id]` | `src/app/brief/[id]/page.tsx` | Public shared-brief reader (reads `briefs` table, renders markdown) |
 | `/privacy` | `src/app/privacy/page.tsx` | Privacy Policy (last updated June 2026) |
 | `/terms` | `src/app/terms/page.tsx` | Terms of Service (last updated June 2026) |
 
@@ -206,14 +216,10 @@ The data lives in `scripts/build-services-doc.js`. Claude maintains both directl
 **Steps (do this in the same commit as the code change):**
 ```bash
 # 1. Edit the data arrays in scripts/build-services-doc.js
-# 2. Regenerate the docx:
-cd /sessions/wonderful-affectionate-faraday/mnt/outputs
-node /sessions/wonderful-affectionate-faraday/mnt/alphabrief/scripts/build-services-doc.js
-cp AlphaBrief-Services-Reference.docx /sessions/wonderful-affectionate-faraday/mnt/alphabrief/
-# 3. Stage both files:
+# 2. Regenerate the docx (writes AlphaBrief-Services-Reference.docx to repo root):
+npm run docs
+# 3. Stage both files (include in the same commit as the code change):
 git add scripts/build-services-doc.js AlphaBrief-Services-Reference.docx
-# (include in the same commit as the code change)
 ```
 
-**The docx npm package is installed at:** `/sessions/wonderful-affectionate-faraday/mnt/outputs/node_modules/docx`
-The script uses `require('./node_modules/docx')` so it must be run from the outputs directory.
+The generator (`scripts/build-services-doc.js`) uses `require('docx')` and writes `AlphaBrief-Services-Reference.docx` to the current directory, so run `npm run docs` from the repo root. `docx` is a **devDependency** — if you hit `Cannot find module 'docx'`, the local `node_modules` is a production-only install; run `npm install` first.
