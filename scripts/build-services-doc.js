@@ -88,7 +88,7 @@ const services = [
   ['Massive.com (ex-Polygon.io)', 'Historical daily candles (chart) and live price snapshots', 'Free tier', 'api.polygon.io still resolves. Free plan: candles + snapshots only. Fundamentals require paid add-on ($29/mo) — NOT used.'],
   ['Lemon Squeezy', 'Subscription billing and payments for AlphaBrief Pro', 'Revenue-share (5%)', 'Pro variant ID: 1816532. Webhook via HMAC-SHA256 + crypto.timingSafeEqual. Handles checkout, cancel, subscription lifecycle.'],
   ['Resend', 'Transactional email: thesis-change alerts and daily/weekly brief emails', 'Free tier (100/day)', 'From: noreply@alphabrief.io. Used by /api/cron/thesis-alerts and /api/cron/email-report.'],
-  ['Vercel', 'Next.js hosting, edge network, and cron job execution', 'Hobby (free) plan', 'Cron routes protected by CRON_SECRET. Deploy on push to main. Hobby: max 2 cron jobs; cron-run history retained ~12h in Observability (30-day needs paid Observability Plus).'],
+  ['Vercel', 'Next.js hosting, edge network, and cron job execution', 'Hobby (free) plan', 'Cron routes protected by CRON_SECRET. Deploy on push to main. Hobby limits per Vercel docs (updated 2026-06-16): 100 cron jobs per project, minimum interval ONCE PER DAY, scheduling precision per-hour (+/-59 min) — a job set for 12:00 fires anywhere in the 12:00-12:59 hour. The previous "max 2 cron jobs" note here was stale and caused a planning error; being confirmed empirically via /api/cron/ping. Cron-run history retained ~12h in Observability (30-day needs paid Observability Plus).'],
 ];
 
 const envVars = [
@@ -134,6 +134,7 @@ const routes = [
   ['/api/promo/redeem', 'POST', 'Required', 'Redeems promo code. Input max 50 chars.'],
   ['/api/cron/thesis-alerts', 'GET', 'CRON_SECRET', 'Weekday sweep: checks thesis per alert ticker, emails user if polarity flipped. Invocation runs every scheduled time regardless of whether any email sends.'],
   ['/api/cron/email-report', 'GET', 'CRON_SECRET', 'Daily/weekly: sends personalized portfolio email brief via Resend. Weekly variant sends on Mondays only.'],
+  ['/api/cron/ping', 'GET', 'CRON_SECRET', 'Heartbeat. Returns {ok, firedAt} and nothing else. Exists to confirm Hobby cron count/frequency limits empirically. Remove once the answer is recorded above.'],
   ['/api/waitlist', 'POST', 'None', 'Captures waitlist signups. Stores in Supabase.'],
 ];
 
