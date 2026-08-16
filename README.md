@@ -1,3 +1,16 @@
+> # ⏸️ ALPHABRIEF IS PAUSED — since 2026-08-16
+>
+> The site is still live at alphabrief.io and the database is intact, but **nothing runs
+> automatically and nothing spends money.** Vercel crons are deregistered and the `PAUSED` env var
+> short-circuits every route that would spend Anthropic tokens or send email.
+>
+> 👉 **Full details and the resume procedure: [`PAUSED.md`](./PAUSED.md)**
+>
+> Resuming takes two steps — clear the `PAUSED` env var in Vercel, then restore the `crons` array
+> in `vercel.json`. Both are described in `PAUSED.md`. Don't do one without the other.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

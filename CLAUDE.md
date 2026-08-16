@@ -1,5 +1,17 @@
 @AGENTS.md
 
+> # ⏸️ THIS PROJECT IS PAUSED (since 2026-08-16)
+>
+> The site is live, but **nothing runs automatically and nothing spends money.** Vercel crons are
+> deregistered (`vercel.json` is `{}`) and the `PAUSED` env var short-circuits all five routes that
+> cost money. Empty AI sections and missing crons are **intentional — do not "fix" them.**
+>
+> **Read [`PAUSED.md`](./PAUSED.md) before changing anything in this repo.** It has the full
+> switch list, the resume procedure, and the open items that were left undone.
+>
+> ⚠️ `AlphaBrief-Services-Reference.docx` and `scripts/build-services-doc.js` are **stale** —
+> they do not document `PAUSED` and still list the three cron schedules as active.
+
 # AlphaBrief — Project Context for Claude
 
 ## What This Is
