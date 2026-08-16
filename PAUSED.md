@@ -68,7 +68,9 @@ Cron routes keep the `CRON_SECRET` check **first**, then no-op.
   # {"paused":true,"symbol":"AAPL",...,"quickTake":"","thesis":""}
   ```
 - Cron endpoints return `401 Unauthorized` unauthenticated — secret check intact.
-- Lemon Squeezy: the single (fake) subscriber was **cancelled**, product unpublished.
+- Lemon Squeezy: the single (fake) subscriber was **cancelled** (not paused — cancel is the event
+  the webhook actually handles, so `is_pro` flips to `false` correctly). The Pro product is set to
+  **draft**, so no checkout link is live.
 
 ---
 
@@ -107,8 +109,8 @@ These still run. None of them cost money today, but know they are live:
 |---|---|
 | `/api/prices`, `/api/chart` | Massive — free tier. Keeps the app looking alive. |
 | `/api/lemon/cancel` | Ungated **on purpose** — a user must always be able to cancel. |
-| `/api/lemon/checkout` | Ungated. Product is unpublished, so no live checkout path. |
-| `/api/waitlist` | ⚠️ **Ungated — still sends two Resend emails.** No caller in `src/` and no form on the live site, so only a direct POST fires it. See open items. |
+| `/api/lemon/checkout` | Ungated. Product is on **draft**, so no live checkout path. |
+| `/api/waitlist` | ⚠️ **Ungated — still sends two Resend emails.** Dead code: added in `9f15af1` for the original waitlist landing page, orphaned when `004b4a6` redesigned that page and dropped the form. **Never fires on its own** — no cron, no internal caller, no form on the live site. Only an inbound POST triggers it, which means a bot, not a user. See open items. |
 | Supabase Auth emails | Magic links / signup confirmations go through Supabase, **not** Resend — `PAUSED` does not touch them. Anyone logging in still gets mail. |
 
 ---
@@ -131,9 +133,10 @@ Left unfixed on purpose — they are cheap to live with and only visible while p
 
 Carry these into whichever session resumes the project:
 
-- [ ] **Gate `/api/waitlist`** — it still sends two emails and is an unauthenticated endpoint that
-      will mail any address handed to it from the alphabrief.io domain. Pre-existing issue, not
-      caused by the pause, but worth closing.
+- [ ] **Delete `/api/waitlist`** (preferred over gating it) — dead code from the original waitlist
+      landing page, orphaned by the `004b4a6` redesign. It stores nothing; it just sends two Resend
+      emails to an unauthenticated, caller-controlled address. Deleting closes both the email path
+      and the open-endpoint issue permanently. Pre-existing, not caused by the pause.
 - [ ] **Add a `subscription_paused` / `subscription_unpaused` webhook handler.**
       `src/app/api/lemon/webhook/route.ts` handles only `subscription_created`,
       `subscription_cancelled`, `subscription_expired`. If a real customer is ever *paused* in
