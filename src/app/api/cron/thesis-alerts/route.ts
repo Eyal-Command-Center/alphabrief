@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { isPaused } from '@/lib/paused'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -246,6 +247,10 @@ export async function GET(req: Request) {
   if (secret !== process.env.CRON_SECRET) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // Paused: no Claude classification and no Resend sends. 200 so a manual or
+  // reinstated cron invocation records a clean run rather than a retry.
+  if (isPaused()) return Response.json({ paused: true, checked: 0, alerted: 0 })
 
   const supabase = makeAdminClient()
 

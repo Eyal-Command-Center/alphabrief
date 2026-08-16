@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { isPaused } from '@/lib/paused'
 
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -25,6 +26,30 @@ const SECTORS = [
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const sector = searchParams.get('sector')?.toLowerCase()
+
+  // Paused: no Finnhub/Claude spend. Return the same sector-keyed shape with
+  // empty AI fields so the sectors page renders instead of erroring out.
+  if (isPaused()) {
+    const stub: Record<string, unknown> = {}
+    for (const s of SECTORS) {
+      stub[s.key] = {
+        paused: true,
+        sector: s.key,
+        name: s.name,
+        etf: s.etf,
+        price: 0,
+        change: 0,
+        topStocks: s.topStocks,
+        thesis: '',
+        drivers: [],
+        catalyst: '',
+        outlook: '',
+      }
+    }
+    return sector
+      ? Response.json(stub[sector] ?? { paused: true })
+      : Response.json(stub)
+  }
 
   const cacheHeaders = { 'Cache-Control': 's-maxage=43200, stale-while-revalidate=86400' }
 

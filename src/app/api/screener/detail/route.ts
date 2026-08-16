@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { isPaused } from '@/lib/paused'
 
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -16,6 +17,34 @@ export async function GET(req: Request) {
   const safeSymbol = symbol.trim().toUpperCase()
   if (!/^[A-Z0-9.\-]{1,10}$/.test(safeSymbol)) {
     return Response.json({ error: 'Invalid symbol' }, { status: 400 })
+  }
+
+  // Paused: no Finnhub/Claude spend. Return the full card shape with empty
+  // values so the client card renders instead of crashing on missing fields.
+  if (isPaused()) {
+    return Response.json({
+      paused: true,
+      symbol: safeSymbol,
+      name: safeSymbol,
+      sector: '',
+      description: '',
+      logo: '',
+      price: 0,
+      change: 0,
+      marketCap: null,
+      pe: null,
+      high52: null,
+      low52: null,
+      isProfitable: true,
+      recommendation: null,
+      peers: [],
+      news: [],
+      quickTake: '',
+      thesis: '',
+      catalystEvent: '',
+      catalystDriver: '',
+      recommendationDate: null,
+    })
   }
 
   const cacheHeaders = { 'Cache-Control': 's-maxage=1200, stale-while-revalidate=3600' }

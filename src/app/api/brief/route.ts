@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { isPaused } from '@/lib/paused'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
@@ -38,6 +39,10 @@ async function getEarnings(symbol: string) {
 }
 
 export async function POST(req: Request) {
+  // Paused: no Claude/Finnhub spend. Same shape the route returns for an empty
+  // ticker list, so callers render "no brief" rather than an error.
+  if (isPaused()) return Response.json({ paused: true, brief: '' })
+
   // Auth check — this route calls Claude + Finnhub, never expose unauthenticated
   const cookieStore = await cookies()
   const supabase = createServerClient(

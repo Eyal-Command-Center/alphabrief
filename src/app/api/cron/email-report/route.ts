@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { isPaused } from '@/lib/paused'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FINNHUB_TOKEN = process.env.FINNHUB_API_KEY
@@ -31,6 +32,10 @@ export async function GET(req: Request) {
   if (secret !== process.env.CRON_SECRET) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // Paused: no Finnhub quotes and no Resend sends. 200 so a manual or
+  // reinstated cron invocation records a clean run rather than a retry.
+  if (isPaused()) return Response.json({ paused: true, sent: 0 })
 
   const isMonday = new Date().getDay() === 1
 
